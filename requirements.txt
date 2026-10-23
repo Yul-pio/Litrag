@@ -1,0 +1,9 @@
+# 本项目零第三方依赖即可运行（纯标准库），txt / md 直接能读。
+#
+# 只有读 PDF 时才需要装一个解析库。按效果从好到差排序，装第一个就够了：
+#   pip install pymupdf      # 推荐：快，双栏论文还原最好
+#   pip install pdfplumber   # 次选：慢一点，版面分析不错
+#   pip install pypdf        # 兜底：纯 Python，效果一般
+#
+# 想接大模型（可选）不需要装任何包，用标准库 urllib 调用 OpenAI 兼容接口即可。
+pymupdf>=1.24

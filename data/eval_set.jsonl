@@ -1,0 +1,12 @@
+{"question": "RAG 主要解决大模型的什么问题？", "expected_doc": "01-rag-basics", "expected_section": "什么是 RAG"}
+{"question": "RAG 的三个阶段分别是什么？", "expected_doc": "01-rag-basics", "expected_section": "三个阶段"}
+{"question": "为什么回答里要标注引用来源？", "expected_doc": "01-rag-basics", "expected_section": "为什么需要引用"}
+{"question": "索引和检索的优化目标一样吗？", "expected_doc": "01-rag-basics", "expected_section": "三个阶段"}
+{"question": "为什么长文档不能整篇塞进模型？", "expected_doc": "02-chunking", "expected_section": "为什么要分块"}
+{"question": "固定字数切分有什么缺点？", "expected_doc": "02-chunking", "expected_section": "固定长度分块的问题"}
+{"question": "相邻块为什么要保留重叠？", "expected_doc": "02-chunking", "expected_section": "重叠窗口"}
+{"question": "重叠比例一般取多少合适？", "expected_doc": "02-chunking", "expected_section": "重叠窗口"}
+{"question": "不做评测会有什么后果？", "expected_doc": "03-evaluation", "expected_section": "为什么必须评测"}
+{"question": "Recall@k 衡量的到底是什么？", "expected_doc": "03-evaluation", "expected_section": "常用指标"}
+{"question": "MRR 对什么样的结果最敏感？", "expected_doc": "03-evaluation", "expected_section": "常用指标"}
+{"question": "评测集一般要构造多少条题目？", "expected_doc": "03-evaluation", "expected_section": "评测集的构造"}

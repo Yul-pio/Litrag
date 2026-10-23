@@ -1,0 +1,11 @@
+# 难例评测集：刻意的同义改写，不直接复用文档里的词。
+# 用途：检验「换一种问法」时系统还能不能找到对的资料。
+# 一个好的 RAG 项目，必须同时给出简单集和难例集的结果，否则指标没有说服力。
+{"question": "文章太长放不下怎么办？", "expected_doc": "02-chunking", "expected_section": "为什么要分块"}
+{"question": "随便切开会把句子切断吗？", "expected_doc": "02-chunking", "expected_section": "固定长度分块的问题"}
+{"question": "两块之间留一点内容有用吗？", "expected_doc": "02-chunking", "expected_section": "重叠窗口"}
+{"question": "模型瞎编事实怎么防？", "expected_doc": "01-rag-basics", "expected_section": "什么是 RAG"}
+{"question": "怎么判断我改的参数是不是真的有用？", "expected_doc": "03-evaluation", "expected_section": "为什么必须评测"}
+{"question": "前三条里有没有正确答案，看哪个指标？", "expected_doc": "03-evaluation", "expected_section": "常用指标"}
+{"question": "标准答案要写多完整？", "expected_doc": "03-evaluation", "expected_section": "评测集的构造"}
+{"question": "私有数据怎么让大模型知道？", "expected_doc": "01-rag-basics", "expected_section": "什么是 RAG"}

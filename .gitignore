@@ -1,0 +1,10 @@
+.index/
+__pycache__/
+*.pyc
+.env
+tmp/
+
+# 论文 PDF 不入库：体积大，且版权归作者，不适合再分发。
+# 用 scripts/fetch_papers.py 自行下载，或手动放进 data/papers/。
+data/papers/*.pdf
+!data/papers/.gitkeep

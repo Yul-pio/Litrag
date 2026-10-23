@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>litrag · 演示动画</title>
+<style>
+  :root {
+    --bg: #0d1220;
+    --panel: #182031;
+    --panel-2: #1e273b;
+    --fg: #eaeef7;
+    --muted: #8794ac;
+    --dim: #5a667c;
+    --accent: #62a0ff;
+    --green: #48c78e;
+    --line: #263048;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(900px 500px at 50% -10%, #17203a 0%, var(--bg) 60%);
+    color: var(--fg);
+    font-family: -apple-system, "Segoe UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  }
+  .stage {
+    width: min(900px, 94vw);
+    padding: 26px 30px 20px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5);
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line);
+  }
+  .brand { display: flex; align-items: baseline; gap: 10px; }
+  .brand b { font-size: 24px; color: var(--accent); letter-spacing: .5px; }
+  .brand span { font-size: 14px; color: var(--muted); }
+  .ver { font-size: 12px; color: var(--dim); font-family: Consolas, monospace; }
+
+  .q {
+    margin-top: 18px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 18px 20px;
+    background: var(--panel);
+    border-radius: 10px;
+    font-size: 20px;
+    min-height: 64px;
+  }
+  .q .tag { color: var(--accent); font-weight: 700; font-size: 14px; letter-spacing: 1px; }
+  .caret { display: inline-block; width: 2px; height: 21px; background: var(--accent);
+           vertical-align: -4px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .step { margin-top: 16px; opacity: 0; transform: translateY(8px);
+          transition: opacity .35s ease, transform .35s ease; }
+  .step.on { opacity: 1; transform: none; }
+  .label { font-size: 13px; font-weight: 700; color: var(--accent); letter-spacing: .5px; }
+  .label em { font-style: normal; font-weight: 400; color: var(--dim); margin-left: 10px; }
+
+  .hit {
+    display: grid;
+    grid-template-columns: 26px 1fr 220px 54px;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    margin-top: 7px;
+    background: var(--panel);
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity .3s ease, transform .3s ease;
+  }
+  .hit.on { opacity: 1; transform: none; }
+  .hit .rank { font-family: Consolas, monospace; color: var(--accent); }
+  .hit .name { color: var(--fg); }
+  .hit .score { font-family: Consolas, monospace; color: var(--muted); text-align: right; }
+  .bar { height: 8px; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 0; border-radius: 4px;
+           background: var(--accent); transition: width .8s cubic-bezier(.2,.8,.2,1); }
+  .hit:first-of-type .bar i, .hit.top .bar i { background: var(--green); }
+
+  .gate {
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 14px 18px;
+    border-radius: 8px;
+    background: rgba(72,199,142,0.08);
+    border: 1px solid rgba(72,199,142,0.25);
+    font-size: 14px;
+    color: var(--green);
+  }
+  .gate .arrow { color: var(--muted); }
+
+  .answer {
+    margin-top: 8px;
+    padding: 4px 2px 0;
+    font-size: 18px;
+    line-height: 1.7;
+    min-height: 58px;
+  }
+  .answer .cite { color: var(--accent); font-family: Consolas, monospace; font-size: 14px; }
+
+  .card {
+    margin-top: 10px;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--panel-2);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .card .from { color: var(--accent); white-space: nowrap; }
+  .card .quote { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  footer {
+    margin-top: 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--dim);
+  }
+  .replay {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: .2s;
+  }
+  .replay:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="stage">
+  <header>
+    <div class="brand"><b>litrag</b><span>文献阅读助手</span></div>
+    <div class="ver">v0.1 demo</div>
+  </header>
+
+  <div class="q"><span class="tag">Q</span><span id="question"></span><span class="caret" id="caret"></span></div>
+
+  <div class="step" id="s1">
+    <div class="label">① 检索 <em>BM25 · 取前 3 条</em></div>
+    <div class="hit top" data-score="25.0"><span class="rank">1</span><span class="name">02-chunking / 重叠窗口</span><span class="bar"><i></i></span><span class="score">25.0</span></div>
+    <div class="hit" data-score="8.3"><span class="rank">2</span><span class="name">02-chunking / 为什么要分块</span><span class="bar"><i></i></span><span class="score">8.3</span></div>
+    <div class="hit" data-score="5.0"><span class="rank">3</span><span class="name">03-evaluation / 为什么必须评测</span><span class="bar"><i></i></span><span class="score">5.0</span></div>
+  </div>
+
+  <div class="step" id="s2">
+    <div class="label">② 判断 <em>资料里到底有没有？</em></div>
+    <div class="gate">
+      <span>词项覆盖率 70% ≥ 阈值 20%</span>
+      <span class="arrow">→</span>
+      <span>有依据，继续回答</span>
+    </div>
+  </div>
+
+  <div class="step" id="s3">
+    <div class="label">③ 生成 <em>抽取原文，不做改写</em></div>
+    <div class="answer" id="answer"></div>
+  </div>
+
+  <div class="step" id="s4">
+    <div class="label">④ 溯源 <em>每句话都能点回原文</em></div>
+    <div class="card">
+      <span class="from">[1] 02-chunking / 重叠窗口</span>
+      <span class="quote">「为了缓解边界截断，通常会让相邻块之间保留一段重叠…」</span>
+    </div>
+  </div>
+
+  <footer>
+    <span>RAG · 执行路径固定，可评测、可复现 —— 这不是 Agent</span>
+    <button class="replay" id="replay">重播</button>
+  </footer>
+</div>
+
+<script>
+const QUESTION = "相邻块为什么要保留重叠？";
+const ANSWER = [
+  "为了缓解边界截断，通常会让相邻块之间保留一段重叠，",
+  "常见比例是块长的百分之十到百分之二十。"
+];
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const $ = id => document.getElementById(id);
+let running = false;
+
+async function type(el, text, speed = 55) {
+  el.textContent = "";
+  for (const ch of text) {
+    el.textContent += ch;
+    await sleep(speed);
+  }
+}
+
+async function play() {
+  if (running) return;
+  running = true;
+
+  // 重置
+  $("question").textContent = "";
+  $("caret").style.display = "inline-block";
+  $("answer").textContent = "";
+  ["s1","s2","s3","s4"].forEach(id => $(id).classList.remove("on"));
+  document.querySelectorAll(".hit").forEach(h => {
+    h.classList.remove("on");
+    h.querySelector(".bar i").style.width = "0";
+  });
+
+  await sleep(350);
+  await type($("question"), QUESTION, 60);
+  $("caret").style.display = "none";
+  await sleep(400);
+
+  // ① 检索：逐条出现 + 分数条
+  $("s1").classList.add("on");
+  const hits = document.querySelectorAll(".hit");
+  const max = 25.0;
+  for (const hit of hits) {
+    hit.classList.add("on");
+    await sleep(180);
+    hit.querySelector(".bar i").style.width = (hit.dataset.score / max * 100) + "%";
+    await sleep(320);
+  }
+  await sleep(300);
+
+  // ② 判断
+  $("s2").classList.add("on");
+  await sleep(900);
+
+  // ③ 生成
+  $("s3").classList.add("on");
+  for (const line of ANSWER) {
+    const span = document.createElement("div");
+    $("answer").appendChild(span);
+    await type(span, line, 38);
+    await sleep(120);
+  }
+  const cite = document.createElement("div");
+  cite.innerHTML = "<span style='color:var(--dim)'>来源见下 · </span><span class='cite'>[1]</span>";
+  $("answer").appendChild(cite);
+  await sleep(600);
+
+  // ④ 溯源
+  $("s4").classList.add("on");
+  await sleep(2600);
+
+  running = false;
+  play(); // 自动循环
+}
+
+$("replay").addEventListener("click", () => {
+  if (!running) play();
+});
+
+play();
+</script>
+</body>
+</html>
