@@ -124,11 +124,19 @@ def load_file(path: str | Path) -> Document:
     )
 
 
+# 目录里的说明文件不是语料，别把它们喂进索引
+SKIP_NAMES = {"readme.md", "readme.txt"}
+
+
 def load_dir(dir_path: str | Path) -> list[Document]:
     """递归读取目录下所有受支持的文档，按文件名排序保证结果可复现。"""
     root = Path(dir_path)
     files = sorted(
-        p for p in root.rglob("*") if p.is_file() and p.suffix.lower() in SUPPORTED
+        p
+        for p in root.rglob("*")
+        if p.is_file()
+        and p.suffix.lower() in SUPPORTED
+        and p.name.lower() not in SKIP_NAMES
     )
     docs = []
     for f in files:
