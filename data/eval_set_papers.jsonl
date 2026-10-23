@@ -1,0 +1,15 @@
+# 论文评测集：题目来自 data/papers/ 里的 5 篇论文。
+# PDF 没有章节结构，所以只标 expected_doc（文档级），不标 expected_section。
+# 注意：文档级的指标会比之前的章节级宽松，两者不能直接比较。
+#
+# 格式：
+#   {"question": "...", "expected_doc": "2312.10997"}
+# expected_doc 就是 PDF 文件名（不含扩展名）。
+#
+# 目标：扩到 40 题。每读一篇论文，出 5～8 题，其中至少 1 题是同义改写。
+{"question": "What are the three stages of RAG?", "expected_doc": "2312.10997"}
+{"question": "What happens when relevant information is placed in the middle of a long context?", "expected_doc": "2307.03172"}
+{"question": "What are reflection tokens used for in Self-RAG?", "expected_doc": "2310.11511"}
+{"question": "What is the dual-encoder architecture used for dense retrieval?", "expected_doc": "2004.04906"}
+{"question": "How does REALM pretrain a language model with a retriever?", "expected_doc": "2002.08909"}
+{"question": "How does Self-RAG decide when to retrieve?", "expected_doc": "2310.11511"}
