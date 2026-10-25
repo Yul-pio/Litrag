@@ -1,0 +1,16 @@
+# Render 部署蓝图
+# 用法：Render 控制台 → New → Blueprint → 选这个仓库 → Apply
+services:
+  - type: web
+    name: litrag
+    runtime: python
+    plan: free
+    region: singapore
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      (python scripts/fetch_papers.py || true) &&
+      python run.py ingest data
+    startCommand: python app.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
