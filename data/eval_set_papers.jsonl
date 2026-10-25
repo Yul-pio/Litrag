@@ -44,3 +44,12 @@
 {"question": "What happens to performance when the relevant document is placed in the middle?", "expected_doc": "2307.03172"}
 {"question": "Why does the position of information matter for long-context models?", "expected_doc": "2307.03172"}
 {"question": "Does increasing the number of retrieved documents always improve performance?", "expected_doc": "2307.03172"}
+# --- 2004.04906 DPR (8) ---
+{"question": "Which datasets are used to evaluate the retriever?", "expected_doc": "2004.04906"}
+{"question": "What retrieval metric is reported in the experiments?", "expected_doc": "2004.04906"}
+{"question": "How does DPR compare with BM25 on retrieval accuracy?", "expected_doc": "2004.04906"}
+{"question": "How are negative passages selected during training?", "expected_doc": "2004.04906"}
+{"question": "What end-to-end QA accuracy does DPR achieve on Natural Questions?", "expected_doc": "2004.04906"}
+{"question": "What is the paper's main claim about sparse versus dense retrieval?", "expected_doc": "2004.04906"}
+{"question": "Why does the paper use BM25 as a baseline?", "expected_doc": "2004.04906"}
+{"question": "How does DPR's retriever differ from the retriever used in REALM?", "expected_doc": "2004.04906"}
