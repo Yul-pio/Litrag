@@ -166,7 +166,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ingest = sub.add_parser("ingest", help="把文档目录建立索引")
     p_ingest.add_argument("dir", help="文档目录")
-    p_ingest.add_argument("--chunk-size", type=int, default=320, dest="chunk_size")
+    p_ingest.add_argument(
+        "--chunk-size",
+        type=int,
+        default=200,
+        dest="chunk_size",
+        help="目标块长（字符）。默认 200 由评测得出，见 README 的参数实验",
+    )
     p_ingest.add_argument("--overlap", type=int, default=60)
     p_ingest.set_defaults(func=cmd_ingest)
 

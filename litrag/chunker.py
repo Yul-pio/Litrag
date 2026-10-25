@@ -71,10 +71,13 @@ def _split_long_paragraph(text: str, target_size: int) -> list[str]:
 
 def chunk_document(
     doc: Document,
-    target_size: int = 320,
+    target_size: int = 200,
     overlap_size: int = 60,
 ) -> list[Chunk]:
     """把一个 Document 切成若干 Chunk。
+
+    target_size 的默认值 200 不是拍脑袋定的：在 46 题评测集上做过
+    150/200/250/320/500/800 六组对照，200 的 Recall@1 最高。详见 README。
 
     target_size  ：目标块长（字符数）
     overlap_size ：相邻块保留的重叠长度
