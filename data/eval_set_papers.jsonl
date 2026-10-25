@@ -1,14 +1,11 @@
-# 论文评测集：题目来自 data/papers/ 里的 5 篇论文。
-# PDF 没有章节结构，所以只标 expected_doc（文档级），不标 expected_section。
-# 注意：文档级的指标会比之前的章节级宽松，两者不能直接比较。
+# Paper eval set. One JSON object per line.
+# expected_doc = PDF filename without extension.
+# See NOTES.md for the fact cards.
+# Edit this file with VS Code, never with PowerShell (it may corrupt CJK text).
 #
-# 格式：
-#   {"question": "...", "expected_doc": "2312.10997"}
-# expected_doc 就是 PDF 文件名（不含扩展名）。
-#
-# 目标：扩到 40 题。每读一篇论文，出 5～8 题，其中至少 1 题是同义改写。
+# target: 40 questions (currently 30)
 
-# ---- 种子题（6 道）----
+# --- seed (6) ---
 {"question": "What are the three stages of RAG?", "expected_doc": "2312.10997"}
 {"question": "What happens when relevant information is placed in the middle of a long context?", "expected_doc": "2307.03172"}
 {"question": "What are reflection tokens used for in Self-RAG?", "expected_doc": "2310.11511"}
@@ -16,9 +13,7 @@
 {"question": "How does REALM pretrain a language model with a retriever?", "expected_doc": "2002.08909"}
 {"question": "How does Self-RAG decide when to retrieve?", "expected_doc": "2310.11511"}
 
-# ---- 2310.11511 Self-RAG（8 道）----
-# 对应事实卡：NOTES.md 卡 1
-# 前 3 题来自你自己的提问改写，后 5 题来自论文第 6～8 页的事实
+# --- 2310.11511 Self-RAG (7) ---
 {"question": "Why does using reflection tokens require customizing the language model?", "expected_doc": "2310.11511"}
 {"question": "Does Self-RAG verify whether its generated output is supported by the retrieved passages?", "expected_doc": "2310.11511"}
 {"question": "What are the four types of reflection tokens in Self-RAG?", "expected_doc": "2310.11511"}
@@ -26,10 +21,11 @@
 {"question": "How many test queries does the TriviaQA-unfiltered evaluation use?", "expected_doc": "2310.11511"}
 {"question": "What evaluation metric is used for short-form QA tasks?", "expected_doc": "2310.11511"}
 {"question": "Which baselines are compared without retrieval?", "expected_doc": "2310.11511"}
+
+# --- cross-document (1) ---
 {"question": "According to the survey, in what ways does RAG improve LLM outputs?", "expected_doc": "2312.10997"}
 
-# ---- 2312.10997 RAG 综述（8 道）----
-# 对应事实卡：NOTES.md 卡 2（综述版）
+# --- 2312.10997 survey (8) ---
 {"question": "How many RAG studies does the survey review?", "expected_doc": "2312.10997"}
 {"question": "What are the three core components of a RAG system?", "expected_doc": "2312.10997"}
 {"question": "Which LLM problems does RAG aim to solve?", "expected_doc": "2312.10997"}
@@ -38,3 +34,13 @@
 {"question": "What are the limitations of naive RAG?", "expected_doc": "2312.10997"}
 {"question": "What challenges does the survey identify for future RAG research?", "expected_doc": "2312.10997"}
 {"question": "What future directions does the survey suggest?", "expected_doc": "2312.10997"}
+
+# --- 2307.03172 Lost in the Middle (8) ---
+{"question": "What are the two tasks used to evaluate models in this paper?", "expected_doc": "2307.03172"}
+{"question": "What is the U-shaped performance curve described in the paper?", "expected_doc": "2307.03172"}
+{"question": "Where is performance best when relevant information is placed in the context?", "expected_doc": "2307.03172"}
+{"question": "What dataset is used for the multi-document question answering task?", "expected_doc": "2307.03172"}
+{"question": "Which models are evaluated in the experiments?", "expected_doc": "2307.03172"}
+{"question": "What happens to performance when the relevant document is placed in the middle?", "expected_doc": "2307.03172"}
+{"question": "Why does the position of information matter for long-context models?", "expected_doc": "2307.03172"}
+{"question": "Does increasing the number of retrieved documents always improve performance?", "expected_doc": "2307.03172"}

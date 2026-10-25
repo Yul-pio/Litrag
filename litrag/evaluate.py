@@ -19,7 +19,9 @@ from .retriever import Retriever
 def load_eval_set(path: str | Path) -> list[dict]:
     path = Path(path)
     items = []
-    for line_no, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    # utf-8-sig：Windows 编辑器保存的 UTF-8 可能带 BOM，
+    # 带 BOM 时 json.loads 会在第 1 个字符就失败。
+    for line_no, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
