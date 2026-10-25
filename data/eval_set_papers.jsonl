@@ -53,3 +53,12 @@
 {"question": "What is the paper's main claim about sparse versus dense retrieval?", "expected_doc": "2004.04906"}
 {"question": "Why does the paper use BM25 as a baseline?", "expected_doc": "2004.04906"}
 {"question": "How does DPR's retriever differ from the retriever used in REALM?", "expected_doc": "2004.04906"}
+# --- 2002.08909 REALM (8) ---
+{"question": "Which three datasets are used to evaluate REALM?", "expected_doc": "2002.08909"}
+{"question": "What evaluation metric is used for the open-domain QA task?", "expected_doc": "2002.08909"}
+{"question": "How does REALM jointly train the retriever and the knowledge-augmented encoder?", "expected_doc": "2002.08909"}
+{"question": "What role does the MIPS index play in REALM?", "expected_doc": "2002.08909"}
+{"question": "Which system is the most direct comparison for REALM?", "expected_doc": "2002.08909"}
+{"question": "Why is it useful to retrieve knowledge during pre-training rather than only at inference time?", "expected_doc": "2002.08909"}
+{"question": "Why does the document index need to be refreshed asynchronously?", "expected_doc": "2002.08909"}
+{"question": "How does REALM's retriever differ from the retriever in DPR?", "expected_doc": "2002.08909"}

@@ -130,6 +130,35 @@ def cmd_check(args: argparse.Namespace) -> None:
     print(preview[:300])
 
 
+def cmd_page(args: argparse.Namespace) -> None:
+    """打印某一页的原文，用来直接读英文，不经过浏览器翻译。
+
+    用法：
+        python run.py page 2002.08909 6          # 按 arXiv 编号，读第 6 页
+        python run.py page data/papers/x.pdf 3   # 也可以给完整路径
+    """
+    from litrag.loader import load_file
+
+    target = Path(args.target)
+    if not target.exists() and not args.target.lower().endswith(".pdf"):
+        candidate = ROOT / "data" / "papers" / f"{args.target}.pdf"
+        if candidate.exists():
+            target = candidate
+
+    if not target.exists():
+        print(f"找不到文件：{args.target}")
+        return
+
+    doc = load_file(target)
+    if not 1 <= args.number <= len(doc.pages):
+        print(f"页码超出范围：这份文档共 {len(doc.pages)} 页")
+        return
+
+    page_no, text = doc.pages[args.number - 1]
+    print(f"===== {doc.doc_id} 第 {page_no} 页 =====")
+    print(text)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="litrag —— 学术文献 RAG 助手")
     parser.add_argument("--index", default=str(DEFAULT_INDEX), help="索引文件路径")
@@ -159,6 +188,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_check = sub.add_parser("check", help="体检一个 PDF/TXT 能不能读出文字")
     p_check.add_argument("path", help="文件路径")
     p_check.set_defaults(func=cmd_check)
+
+    p_page = sub.add_parser("page", help="打印某一页的原文（读英文用，绕过浏览器翻译）")
+    p_page.add_argument("target", help="arXiv 编号或文件路径")
+    p_page.add_argument("number", type=int, help="页码，从 1 开始")
+    p_page.set_defaults(func=cmd_page)
 
     return parser
 
