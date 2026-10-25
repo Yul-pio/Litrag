@@ -61,6 +61,12 @@ def main() -> None:
             f"{recall[1]:>6.1%} {recall[3]:>6.1%} {recall[5]:>6.1%} {report['mrr']:>6.1%}"
         )
 
+        # 全线归零几乎一定是代码坏了，不是方法差。
+        # 最常见的原因：索引没建起来（bm25.fit 没执行 / chunks 为空）。
+        if recall[1] == 0 and recall[3] == 0:
+            print("  ⚠ 所有指标都是 0：先检查代码，通常是索引没建起来（fit 没执行）")
+            print("     补救：python -m unittest discover -s tests")
+
         if best is None or recall[1] > best[2]:
             best = (size, overlap, recall[1])
 
