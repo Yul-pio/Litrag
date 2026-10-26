@@ -142,3 +142,29 @@
 ```
 
 > 加题之后指标**下降是正常的**（题变难了），记下来才不会误判成代码改坏了。
+
+---
+
+## 六、上线记录
+
+```
+2026-10-26 | 临时隧道 | https://creations-institutions-passion-river.trycloudflare.com
+            | cloudflared 快速隧道，不需要信用卡；随进程结束失效，重启后网址会变
+            | 长期方案：Hugging Face Spaces（免费无卡，需加 Dockerfile）
+```
+
+**自己重新开启的方法（两个窗口）：**
+
+窗口 1（网站）：
+```
+cd /d D:\DS_work\litrag
+python app.py
+```
+
+窗口 2（隧道）：
+```
+cd /d D:\DS_work\litrag
+.\tools\cloudflared.exe tunnel --url http://localhost:8000
+```
+
+窗口 2 会打印新的 `https://xxx.trycloudflare.com`。

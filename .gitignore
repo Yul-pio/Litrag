@@ -8,3 +8,5 @@ tmp/
 # 用 scripts/fetch_papers.py 自行下载，或手动放进 data/papers/。
 data/papers/*.pdf
 !data/papers/.gitkeep
+
+tools/
