@@ -6,6 +6,9 @@
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](requirements.txt)
+[![Live Demo](https://img.shields.io/badge/demo-online-success)](https://yulpio.pythonanywhere.com)
+
+**在线演示**：<https://yulpio.pythonanywhere.com>（问一句 "What are the three stages of RAG?" 试试）
 
 ---
 

@@ -150,7 +150,11 @@
 ```
 2026-10-26 | 临时隧道 | https://creations-institutions-passion-river.trycloudflare.com
             | cloudflared 快速隧道，不需要信用卡；随进程结束失效，重启后网址会变
-            | 长期方案：Hugging Face Spaces（免费无卡，需加 Dockerfile）
+
+2026-10-26 | 正式上线 | https://yulpio.pythonanywhere.com
+            | PythonAnywhere 免费 Beginner 账号，不要信用卡
+            | 部署方式：上传 zip（177KB，含预建索引）→ 解压 → 配 WSGI → Reload
+            | 免费层限制：每天 100 CPU 秒；每 3 个月需登录一次
 ```
 
 **自己重新开启的方法（两个窗口）：**
