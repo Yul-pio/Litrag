@@ -1,11 +1,10 @@
-"""极简 Web 界面（只用标准库，不需要 flask / fastapi）。
+"""本地开发用的 HTTP 服务（标准库）。
+
+生产环境走 wsgi.py（PythonAnywhere 只支持 WSGI），
+两者调用同一个 litrag.service，逻辑只写一遍。
 
 启动：
-    python app.py
-然后打开 http://127.0.0.1:8000
-
-它现在只是个「能用的验证界面」。等你确认有人愿意用，再换成 Next.js
-或 FastAPI + 付费墙，那才是产品化的阶段。
+    python app.py          → http://127.0.0.1:8000
 """
 
 from __future__ import annotations
@@ -15,6 +14,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -23,16 +23,10 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from litrag.answerer import answer
-from litrag.retriever import Retriever
-INDEX = ROOT / ".index" / "index.json"
-RETRIEVER = Retriever.load(INDEX)
+from litrag import service  # noqa: E402
 
 PAGE_FILE = ROOT / "web" / "index.html"
-if PAGE_FILE.exists():
-    PAGE = PAGE_FILE.read_text(encoding="utf-8")
-else:
-    PAGE = "<h1>litrag</h1><p>缺少 web/index.html</p>"
+PAGE = PAGE_FILE.read_text(encoding="utf-8") if PAGE_FILE.exists() else "<h1>litrag</h1>"
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -43,50 +37,53 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _json(self, status: int, payload: dict) -> None:
+        self._send(status, json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                   "application/json; charset=utf-8")
+
+    @property
+    def session(self) -> str:
+        return self.headers.get("X-Session", "")
+
     def do_GET(self) -> None:  # noqa: N802
-        if self.path in ("/", "/index.html"):
+        path = urlparse(self.path).path
+        if path in ("/", "/index.html"):
             self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
-        else:
-            self._send(404, b"not found", "text/plain; charset=utf-8")
+            return
+        if path == "/api/docs":
+            self._json(200, service.list_documents(self.session))
+            return
+        self._send(404, b"not found", "text/plain; charset=utf-8")
 
     def do_POST(self) -> None:  # noqa: N802
-        if self.path != "/api/ask":
-            self._send(404, b"not found", "text/plain; charset=utf-8")
-            return
+        parsed = urlparse(self.path)
+        length = int(self.headers.get("Content-Length") or 0)
 
         try:
-            length = int(self.headers.get("Content-Length", 0))
-            payload = json.loads(self.rfile.read(length) or b"{}")
-            question = (payload.get("question") or "").strip()
-            if not question:
-                raise ValueError("问题不能为空")
+            if parsed.path == "/api/ask":
+                payload = json.loads(self.rfile.read(length) or b"{}")
+                self._json(200, service.ask(payload.get("question", ""), self.session))
+                return
 
-            hits = RETRIEVER.search(question, k=5)
-            result = answer(question, hits, use_llm=True)
-            body = json.dumps(
-                {
-                    "answer": result.text,
-                    "mode": result.mode,
-                    "warning": result.warning,
-                    "citations": [c.__dict__ for c in result.citations],
-                },
-                ensure_ascii=False,
-            ).encode("utf-8")
-            self._send(200, body, "application/json; charset=utf-8")
+            if parsed.path == "/api/upload":
+                name = (parse_qs(parsed.query).get("name") or ["upload.pdf"])[0]
+                data = self.rfile.read(length)
+                if not data:
+                    raise ValueError("没有收到文件内容")
+                self._json(200, service.add_document(self.session, name, data))
+                return
+
+            self._send(404, b"not found", "text/plain; charset=utf-8")
+        except ValueError as exc:
+            self._json(400, {"error": str(exc)})
         except Exception as exc:
-            body = json.dumps({"error": str(exc)}, ensure_ascii=False).encode("utf-8")
-            self._send(400, body, "application/json; charset=utf-8")
+            self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
 
     def log_message(self, fmt: str, *args) -> None:  # 安静一点
         return
 
 
 if __name__ == "__main__":
-    if not INDEX.exists():
-        sys.exit("索引不存在，请先运行：python run.py ingest data/docs")
-
-    # 本地开发监听 127.0.0.1；云平台会注入 PORT 环境变量，
-    # 这时必须监听 0.0.0.0，否则外网访问不到。
     port = int(os.environ.get("PORT", 8000))
     host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
 

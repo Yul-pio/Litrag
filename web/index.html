@@ -10,14 +10,17 @@
          max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.7; }
   h1 { font-size: 24px; margin: 0 0 8px; }
   .lead { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
-  .sub { color: #555; font-size: 15px; margin-bottom: 18px; }
-  .steps { background: #f7f8fa; border: 1px solid #e6e8ee; border-radius: 10px;
-           padding: 14px 18px; font-size: 14px; color: #444; margin-bottom: 22px; }
-  .steps div { margin: 3px 0; }
-  .steps b { color: #222; }
-  .demo-note { font-size: 13px; color: #8a5a00; background: #fff8ec;
-               border: 1px solid #f3e2c7; border-radius: 8px; padding: 8px 12px;
-               margin-bottom: 18px; }
+  .sub { color: #555; font-size: 15px; margin-bottom: 20px; }
+  .panel { border: 1px dashed #cfd4dd; border-radius: 10px; padding: 14px 16px;
+           margin-bottom: 20px; font-size: 14px; }
+  .panel b { color: #222; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+  .file-btn { border: 1px solid #2f6feb; color: #2f6feb; background: transparent;
+              border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
+              font-family: inherit; }
+  .file-btn:hover { background: #f0f5ff; }
+  #status { font-size: 13px; color: #666; }
+  .docs { font-size: 13px; color: #666; margin-top: 8px; }
   .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .chip { border: 1px solid #d6d9e0; background: transparent; color: inherit;
           border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
@@ -42,17 +45,17 @@
 </head>
 <body>
   <h1>litrag</h1>
-  <div class="lead">读论文时卡住了？问它，它从原文里找答案，并标出第几页。</div>
-  <div class="sub">不是聊天机器人——它只会说论文里写过的话。资料里没有的，它直接说“没有”。</div>
+  <div class="lead">把论文丢进来，问它问题，答案直接标出第几页。</div>
+  <div class="sub">不是聊天机器人——它只摘论文里的原话。资料里没有的，它直接说“没有”。</div>
 
-  <div class="steps">
-    <div><b>①</b> 点下面的示例问题，或者自己输入</div>
-    <div><b>②</b> 它在你上传的论文里检索，只摘原文句子</div>
-    <div><b>③</b> 每句话后面有 <b>[1]</b>，点开能看到出处和第几页</div>
-  </div>
-
-  <div class="demo-note">
-    当前是演示版：库里放着 5 篇 RAG 方向的论文（英文）。<b>上传你自己的论文</b>功能正在开发。
+  <div class="panel">
+    <b>① 上传你的论文</b>（PDF，可多选，最多 10 篇）
+    <div class="row">
+      <input type="file" id="files" accept="application/pdf" multiple hidden>
+      <button class="file-btn" id="pick">选择 PDF 文件</button>
+      <span id="status"></span>
+    </div>
+    <div class="docs" id="docs">正在读取你的文献库…</div>
   </div>
 
   <div class="examples">
@@ -61,7 +64,7 @@
     <button class="chip">What are reflection tokens in Self-RAG?</button>
   </div>
 
-  <textarea id="q" placeholder="输入你的问题。论文是英文的，用英文问效果最好，例如：What evaluation metric is used for short-form QA tasks?"></textarea>
+  <textarea id="q" placeholder="② 提问。英文论文用英文问效果最好"></textarea>
   <button class="go" id="go">提问</button>
 
   <div id="out">
@@ -76,12 +79,66 @@
   </footer>
 
 <script>
+const SESSION = (() => {
+  let s = localStorage.getItem('litrag_sid');
+  if (!s) {
+    s = 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    localStorage.setItem('litrag_sid', s);
+  }
+  return s;
+})();
+
 const q = document.getElementById('q');
 const go = document.getElementById('go');
 const out = document.getElementById('out');
 const answerEl = document.getElementById('answer');
 const citeEl = document.getElementById('cite');
 const warnEl = document.getElementById('warn');
+const docsEl = document.getElementById('docs');
+const statusEl = document.getElementById('status');
+const fileInput = document.getElementById('files');
+const pick = document.getElementById('pick');
+
+async function loadDocs() {
+  try {
+    const res = await fetch('/api/docs', { headers: {'X-Session': SESSION} });
+    const data = await res.json();
+    if (!data.docs || data.docs.length === 0) {
+      docsEl.textContent = '还没有上传——当前使用演示库（5 篇 RAG 论文）。';
+    } else {
+      docsEl.textContent = `你的文献库（${data.docs.length} 篇）：` +
+        data.docs.map(d => `${d.filename}（${d.chunks} 块）`).join('、');
+    }
+  } catch (e) {
+    docsEl.textContent = '读取文献库失败：' + e;
+  }
+}
+
+async function uploadFiles(files) {
+  for (const file of files) {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      statusEl.textContent = `${file.name} 不是 PDF，已跳过`;
+      continue;
+    }
+    statusEl.textContent = `上传中：${file.name}…`;
+    try {
+      const res = await fetch('/api/upload?name=' + encodeURIComponent(file.name), {
+        method: 'POST',
+        headers: {'X-Session': SESSION, 'Content-Type': 'application/pdf'},
+        body: file
+      });
+      const data = await res.json();
+      if (data.error) {
+        statusEl.textContent = `${file.name} 失败：${data.error}`;
+      } else {
+        statusEl.textContent = `${file.name} 完成：${data.chars} 字，${data.chunks} 块`;
+      }
+    } catch (e) {
+      statusEl.textContent = `${file.name} 上传失败：` + e;
+    }
+  }
+  loadDocs();
+}
 
 async function ask() {
   const question = q.value.trim();
@@ -90,7 +147,7 @@ async function ask() {
   try {
     const res = await fetch('/api/ask', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json'},
+      headers: {'Content-Type': 'application/json', 'X-Session': SESSION},
       body: JSON.stringify({question})
     });
     const data = await res.json();
@@ -115,6 +172,12 @@ async function ask() {
   }
 }
 
+pick.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => {
+  if (fileInput.files.length) uploadFiles(fileInput.files);
+  fileInput.value = '';
+});
+
 document.querySelectorAll('.chip').forEach(chip => {
   chip.addEventListener('click', () => {
     q.value = chip.textContent;
@@ -126,6 +189,8 @@ go.addEventListener('click', ask);
 q.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ask();
 });
+
+loadDocs();
 </script>
 </body>
 </html>
