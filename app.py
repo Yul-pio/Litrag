@@ -28,90 +28,11 @@ from litrag.retriever import Retriever
 INDEX = ROOT / ".index" / "index.json"
 RETRIEVER = Retriever.load(INDEX)
 
-PAGE = """<!doctype html>
-<html lang="zh-CN">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>litrag · 文献阅读助手</title>
-<style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-         max-width: 760px; margin: 48px auto; padding: 0 20px; line-height: 1.7; }
-  h1 { font-size: 22px; margin-bottom: 4px; }
-  .sub { color: #888; font-size: 13px; margin-bottom: 28px; }
-  textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 15px;
-             border: 1px solid #ccc; border-radius: 8px; min-height: 84px;
-             font-family: inherit; resize: vertical; }
-  button { margin-top: 10px; padding: 10px 20px; font-size: 15px; cursor: pointer;
-           border: 0; border-radius: 8px; background: #2f6feb; color: #fff; }
-  button:disabled { background: #9ab; cursor: wait; }
-  #out { margin-top: 28px; display: none; }
-  .answer { white-space: pre-wrap; }
-  .cite { margin-top: 18px; font-size: 13px; color: #666; border-top: 1px dashed #ccc;
-          padding-top: 14px; }
-  .cite div { margin-bottom: 10px; }
-  .warn { margin-top: 14px; padding: 10px 12px; background: #fff4e5; color: #8a5a00;
-          border-radius: 8px; font-size: 13px; }
-</style>
-</head>
-<body>
-  <h1>litrag · 文献阅读助手</h1>
-  <div class="sub">每个结论都能点回原文 —— v0.1</div>
-
-  <textarea id="q" placeholder="问点什么，比如：为什么要分块？"></textarea>
-  <button id="go">提问</button>
-
-  <div id="out">
-    <div class="answer" id="answer"></div>
-    <div class="warn" id="warn" style="display:none"></div>
-    <div class="cite" id="cite"></div>
-  </div>
-
-<script>
-const q = document.getElementById('q');
-const go = document.getElementById('go');
-const out = document.getElementById('out');
-const answerEl = document.getElementById('answer');
-const citeEl = document.getElementById('cite');
-const warnEl = document.getElementById('warn');
-
-async function ask() {
-  const question = q.value.trim();
-  if (!question) return;
-  go.disabled = true; go.textContent = '检索中…';
-  try {
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({question})
-    });
-    const data = await res.json();
-    answerEl.textContent = data.answer;
-    citeEl.innerHTML = data.citations.map(c =>
-      `<div><b>[${c.id}]</b> ${c.doc} / ${c.section}` +
-      (c.page ? `，第 ${c.page} 页` : '') +
-      `<br>「${c.quote}」</div>`
-    ).join('');
-    warnEl.style.display = data.warning ? 'block' : 'none';
-    warnEl.textContent = data.warning || '';
-    out.style.display = 'block';
-  } catch (err) {
-    answerEl.textContent = '请求失败：' + err;
-    out.style.display = 'block';
-  } finally {
-    go.disabled = false; go.textContent = '提问';
-  }
-}
-
-go.addEventListener('click', ask);
-q.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ask();
-});
-</script>
-</body>
-</html>
-"""
+PAGE_FILE = ROOT / "web" / "index.html"
+if PAGE_FILE.exists():
+    PAGE = PAGE_FILE.read_text(encoding="utf-8")
+else:
+    PAGE = "<h1>litrag</h1><p>缺少 web/index.html</p>"
 
 
 class Handler(BaseHTTPRequestHandler):
