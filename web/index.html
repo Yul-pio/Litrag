@@ -3,26 +3,33 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>litrag · 论文问答，答案带页码</title>
+<title>litrag · 读论文，答案带页码</title>
 <style>
   :root { color-scheme: light dark; }
   body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-         max-width: 760px; margin: 44px auto; padding: 0 20px; line-height: 1.7; }
-  h1 { font-size: 24px; margin: 0 0 6px; }
-  .sub { color: #555; font-size: 15px; margin-bottom: 6px; }
-  .hint { color: #888; font-size: 13px; margin-bottom: 24px; }
-  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+         max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.7; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  .lead { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .sub { color: #555; font-size: 15px; margin-bottom: 18px; }
+  .steps { background: #f7f8fa; border: 1px solid #e6e8ee; border-radius: 10px;
+           padding: 14px 18px; font-size: 14px; color: #444; margin-bottom: 22px; }
+  .steps div { margin: 3px 0; }
+  .steps b { color: #222; }
+  .demo-note { font-size: 13px; color: #8a5a00; background: #fff8ec;
+               border: 1px solid #f3e2c7; border-radius: 8px; padding: 8px 12px;
+               margin-bottom: 18px; }
+  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
   .chip { border: 1px solid #d6d9e0; background: transparent; color: inherit;
           border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
           font-family: inherit; }
   .chip:hover { border-color: #2f6feb; color: #2f6feb; }
   textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 15px;
-             border: 1px solid #ccc; border-radius: 8px; min-height: 84px;
+             border: 1px solid #ccc; border-radius: 8px; min-height: 76px;
              font-family: inherit; resize: vertical; }
-  button.go { margin-top: 10px; padding: 10px 20px; font-size: 15px; cursor: pointer;
+  button.go { margin-top: 10px; padding: 10px 22px; font-size: 15px; cursor: pointer;
               border: 0; border-radius: 8px; background: #2f6feb; color: #fff; }
   button.go:disabled { background: #9ab; cursor: wait; }
-  #out { margin-top: 28px; display: none; }
+  #out { margin-top: 26px; display: none; }
   .answer { white-space: pre-wrap; }
   .cite { margin-top: 18px; font-size: 13px; color: #666; border-top: 1px dashed #ccc;
           padding-top: 14px; }
@@ -35,16 +42,26 @@
 </head>
 <body>
   <h1>litrag</h1>
-  <div class="sub">内置 5 篇 RAG 论文（约 47 万字），问它任何问题，答案都标出页码。</div>
-  <div class="hint">资料里没有的，它会直接说"没有"，不编造。</div>
+  <div class="lead">读论文时卡住了？问它，它从原文里找答案，并标出第几页。</div>
+  <div class="sub">不是聊天机器人——它只会说论文里写过的话。资料里没有的，它直接说“没有”。</div>
 
-  <div class="examples">
-    <button class="chip">What are the three stages of RAG?</button>
-    <button class="chip">What are reflection tokens in Self-RAG?</button>
-    <button class="chip">What happens when relevant information is in the middle?</button>
+  <div class="steps">
+    <div><b>①</b> 点下面的示例问题，或者自己输入</div>
+    <div><b>②</b> 它在你上传的论文里检索，只摘原文句子</div>
+    <div><b>③</b> 每句话后面有 <b>[1]</b>，点开能看到出处和第几页</div>
   </div>
 
-  <textarea id="q" placeholder="用英文提问效果最好，例如：What evaluation metric is used for short-form QA tasks?"></textarea>
+  <div class="demo-note">
+    当前是演示版：库里放着 5 篇 RAG 方向的论文（英文）。<b>上传你自己的论文</b>功能正在开发。
+  </div>
+
+  <div class="examples">
+    <button class="chip">什么是 RAG？</button>
+    <button class="chip">What are the three stages of RAG?</button>
+    <button class="chip">What are reflection tokens in Self-RAG?</button>
+  </div>
+
+  <textarea id="q" placeholder="输入你的问题。论文是英文的，用英文问效果最好，例如：What evaluation metric is used for short-form QA tasks?"></textarea>
   <button class="go" id="go">提问</button>
 
   <div id="out">
