@@ -190,7 +190,12 @@ def _llm(question: str, hits: list[Hit]) -> Answer:
     return Answer(text=text, citations=citations, mode="llm", warning=warning)
 
 
-def answer(question: str, hits: list[Hit], use_llm: bool = True) -> Answer:
+def answer(
+    question: str,
+    hits: list[Hit],
+    use_llm: bool = True,
+    min_coverage: float = MIN_COVERAGE,
+) -> Answer:
     if not hits:
         return Answer(
             text="没有检索到相关内容。请确认文档已入库，或换一种问法。",
@@ -201,13 +206,13 @@ def answer(question: str, hits: list[Hit], use_llm: bool = True) -> Answer:
     # 先判「资料里到底有没有」，再决定要不要回答。
     # 顺序很重要：如果先让模型生成、再判断，它已经编完了。
     coverage = _coverage(question, hits)
-    if coverage < MIN_COVERAGE:
+    if coverage < min_coverage:
         return Answer(
             text="资料中没有找到与这个问题相关的内容。为避免编造，这里不给出回答。"
             "可以换一种问法，或者先把相关资料入库。",
             citations=[],
             mode="none",
-            warning=f"词项覆盖率仅 {coverage:.0%}（阈值 {MIN_COVERAGE:.0%}），已拒答",
+            warning=f"词项覆盖率仅 {coverage:.0%}（阈值 {min_coverage:.0%}），已拒答",
         )
 
     if use_llm and os.getenv("LITRAG_API_KEY"):

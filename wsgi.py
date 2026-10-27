@@ -3,8 +3,10 @@
 路由：
     GET  /                 首页
     GET  /api/docs         当前会话已上传的文档列表
+    GET  /api/file?doc=xx  打开当前会话有权访问的 PDF
     POST /api/ask          {"question": "..."}  → 回答
     POST /api/upload?name=xx.pdf  （原始字节）  → 解析并入库
+    DELETE /api/session    清空当前会话的上传文件和索引
 
 会话靠请求头 X-Session 区分（浏览器生成，存在 localStorage）。
 """
@@ -14,7 +16,7 @@ from __future__ import annotations
 import json
 import sys
 from pathlib import Path
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, quote
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
@@ -26,11 +28,13 @@ PAGE_FILE = ROOT / "web" / "index.html"
 PAGE = PAGE_FILE.read_text(encoding="utf-8") if PAGE_FILE.exists() else "<h1>litrag</h1>"
 
 
-def _respond(start_response, status: str, body: bytes, content_type: str):
-    start_response(
-        status,
-        [("Content-Type", content_type), ("Content-Length", str(len(body)))],
-    )
+def _respond(start_response, status: str, body: bytes, content_type: str, headers=None):
+    response_headers = [
+        ("Content-Type", content_type),
+        ("Content-Length", str(len(body))),
+    ]
+    response_headers.extend((headers or {}).items())
+    start_response(status, response_headers)
     return [body]
 
 
@@ -55,6 +59,25 @@ def application(environ, start_response):
     try:
         if method == "GET" and path == "/api/docs":
             return _json(start_response, "200 OK", service.list_documents(sid))
+
+        if method == "GET" and path == "/api/file":
+            query = parse_qs(environ.get("QUERY_STRING", ""))
+            doc_id = (query.get("doc") or [""])[0]
+            target, filename = service.get_document_file(sid, doc_id)
+            safe_name = quote(filename, safe="")
+            return _respond(
+                start_response,
+                "200 OK",
+                target.read_bytes(),
+                "application/pdf",
+                {
+                    "Content-Disposition": f"inline; filename*=UTF-8''{safe_name}",
+                    "Cache-Control": "private, max-age=300",
+                },
+            )
+
+        if method == "DELETE" and path == "/api/session":
+            return _json(start_response, "200 OK", service.clear_session(sid))
 
         if method == "POST" and path == "/api/ask":
             length = int(environ.get("CONTENT_LENGTH") or 0)

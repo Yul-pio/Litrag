@@ -6,9 +6,11 @@
 
 from __future__ import annotations
 
+import shutil
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -17,7 +19,9 @@ if str(ROOT) not in sys.path:
 from litrag.answerer import answer
 from litrag.bm25 import content_terms, tokenize
 from litrag.chunker import chunk_document
+from litrag.evaluate import run_refusal_eval
 from litrag.loader import Document, load_dir
+from litrag import service
 from litrag.retriever import Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -36,6 +40,17 @@ class TestTokenizer(unittest.TestCase):
         terms = content_terms("分块")
         self.assertEqual(terms, ["分块"])
 
+    def test_content_terms_drop_question_words(self):
+        terms = content_terms("What are the three stages of RAG?")
+        self.assertIn("stages", terms)
+        self.assertIn("rag", terms)
+        self.assertNotIn("what", terms)
+        self.assertNotIn("the", terms)
+
+        zh_terms = content_terms("为什么要分块？")
+        self.assertIn("分块", zh_terms)
+        self.assertNotIn("什么", zh_terms)
+
 
 class TestChunker(unittest.TestCase):
     def test_sections_become_metadata(self):
@@ -51,6 +66,17 @@ class TestChunker(unittest.TestCase):
         # 每个块只能包含自己那一节的正文
         self.assertNotIn("乙乙乙", chunks[0].text)
         self.assertNotIn("甲甲甲", chunks[1].text)
+
+    def test_overlap_is_a_real_suffix(self):
+        doc = Document(
+            doc_id="overlap",
+            title="overlap",
+            path="overlap.md",
+            pages=[(None, "甲" * 100 + "。" + "乙" * 100 + "。")],
+        )
+        chunks = chunk_document(doc, target_size=100, overlap_size=25)
+        self.assertGreaterEqual(len(chunks), 2)
+        self.assertTrue(chunks[1].text.startswith(chunks[0].text[-25:]))
 
 
 class TestEndToEnd(unittest.TestCase):
@@ -80,6 +106,52 @@ class TestEndToEnd(unittest.TestCase):
         result = answer("今天上海天气怎么样？", hits, use_llm=False)
         self.assertEqual(result.mode, "none")
         self.assertEqual(result.citations, [])
+
+    def test_refusal_eval_counts_false_answers(self):
+        report = run_refusal_eval(
+            self.retriever,
+            [
+                {"question": "今天上海天气怎么样？"},
+                {"question": "What is the capital city of Australia?"},
+            ],
+            min_coverage=0.2,
+        )
+        self.assertEqual(report["total"], 2)
+        self.assertGreaterEqual(report["refused"], 1)
+        self.assertLessEqual(report["false_answer_rate"], 0.5)
+
+
+class TestSessionFiles(unittest.TestCase):
+    def test_read_and_clear_session_file(self):
+        # 用项目内的临时目录，而不是系统临时目录：
+        # 有些受限环境（沙箱、只读系统盘）不允许往 %TEMP% 里写，
+        # 但这跟被测代码没关系，不该让测试因此失败。
+        base = ROOT / "tmp" / "test-session-root"
+        if base.exists():
+            shutil.rmtree(base, ignore_errors=True)
+        base.mkdir(parents=True, exist_ok=True)
+        try:
+            with patch.object(service, "UPLOAD_ROOT", base):
+                sid = "test-session-123"
+                service._save_meta(
+                    sid,
+                    {
+                        "docs": [
+                            {"doc_id": "paper", "filename": "paper.pdf", "chunks": 1, "chars": 9}
+                        ],
+                        "chunks": [],
+                    },
+                )
+                target = service._session_dir(sid) / "paper.pdf"
+                target.write_bytes(b"%PDF-1.4 test")
+                path, filename = service.get_document_file(sid, "paper")
+                self.assertEqual(path, target)
+                self.assertEqual(filename, "paper.pdf")
+
+                service.clear_session(sid)
+                self.assertFalse(service._session_dir(sid).exists())
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
 
 
 if __name__ == "__main__":

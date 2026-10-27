@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import threading
 from pathlib import Path
 
@@ -143,6 +144,51 @@ def add_document(sid: str | None, filename: str, data: bytes) -> dict:
 
     return {"doc_id": doc_id, "chunks": len(chunks),
             "chars": sum(len(t) for _, t in doc.pages), "total_docs": len(meta["docs"])}
+
+
+def get_document_file(sid: str | None, doc_id: str) -> tuple[Path, str]:
+    """返回当前会话有权访问的 PDF 路径和原始文件名。
+
+    doc_id 必须来自会话元数据或全局索引入口，不能直接拼成任意路径。
+    """
+    if not valid_session(sid):
+        raise ValueError("会话标识无效，请刷新页面重试")
+    if not doc_id or len(doc_id) > 100:
+        raise ValueError("文档标识无效")
+
+    meta = _load_meta(sid)
+    for item in meta["docs"]:
+        if item["doc_id"] != doc_id:
+            continue
+        target = _session_dir(sid) / f"{doc_id}.pdf"
+        if target.is_file() and target.resolve().parent == _session_dir(sid).resolve():
+            return target, item.get("filename", target.name)
+        raise ValueError("文档文件已丢失，请重新上传")
+
+    # 全局演示库：只允许索引里真实存在的 doc_id。
+    if any(chunk.doc_id == doc_id for chunk in _global().chunks):
+        target = ROOT / "data" / "papers" / f"{doc_id}.pdf"
+        if target.is_file():
+            return target, target.name
+
+    raise ValueError("找不到对应的 PDF 文件")
+
+
+def clear_session(sid: str | None) -> dict:
+    """删除当前会话的上传文件、索引和内存缓存。"""
+    if not valid_session(sid):
+        raise ValueError("会话标识无效，请刷新页面重试")
+
+    root = UPLOAD_ROOT.resolve()
+    target = _session_dir(sid).resolve()
+    if target.parent != root:
+        raise ValueError("会话路径无效")
+
+    with _lock:
+        _user_cache.pop(sid, None)
+        if target.exists():
+            shutil.rmtree(target)
+    return {"ok": True, "message": "当前会话的文献库已清空"}
 
 
 def list_documents(sid: str | None) -> dict:

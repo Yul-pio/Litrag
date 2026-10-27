@@ -17,6 +17,24 @@ from collections import Counter, defaultdict
 _CJK_RUN = re.compile(r"[\u4e00-\u9fff]+")
 _LATIN = re.compile(r"[a-z0-9_]+")
 
+# 只用于“覆盖率/拒答”判断，不参与 BM25 检索。
+# 问题词和虚词如果参与覆盖率，会让“什么是……”这类无关问题虚高。
+_EN_COVERAGE_STOPWORDS = frozenset({
+    "a", "an", "the", "of", "to", "in", "on", "for", "and", "or", "with",
+    "is", "are", "was", "were", "be", "been", "being", "do", "does", "did",
+    "what", "why", "how", "which", "who", "when", "where", "whether",
+    "can", "could", "should", "would", "about", "from", "by", "as", "at",
+    "it", "its", "this", "that", "these", "those", "there", "their",
+    "paper", "study", "article", "according", "mention", "explain",
+    "please", "tell", "give",
+})
+_CJK_COVERAGE_STOPWORDS = frozenset({
+    "什么", "为什", "怎么", "为什么", "如何", "是否", "多少", "哪些", "哪个",
+    "请问", "一下", "这篇", "本文", "文章", "论文", "研究", "作者",
+    "可以", "一般", "主要", "需要", "采用", "使用", "对于", "关于",
+    "其中", "以及", "进行", "这个", "那个", "时候", "问题", "内容",
+})
+
 
 def tokenize(text: str) -> list[str]:
     """把文本切成检索用的 token。
@@ -42,9 +60,16 @@ def content_terms(text: str) -> list[str]:
     导致「今天天气怎么样」这种无关问题也被判成相关。
     """
     text = text.lower()
-    terms = [w for w in _LATIN.findall(text) if len(w) >= 2]
+    terms = [
+        w for w in _LATIN.findall(text)
+        if len(w) >= 2 and w not in _EN_COVERAGE_STOPWORDS
+    ]
     for run in _CJK_RUN.findall(text):
-        terms.extend(run[i : i + 2] for i in range(len(run) - 1))
+        terms.extend(
+            run[i : i + 2]
+            for i in range(len(run) - 1)
+            if run[i : i + 2] not in _CJK_COVERAGE_STOPWORDS
+        )
     if not terms:  # 极短的查询（比如单个汉字）退化为通用切分
         terms = tokenize(text)
     return terms

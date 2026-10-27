@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from .answerer import MIN_COVERAGE, answer
 from .retriever import Retriever
 
 
@@ -111,3 +112,67 @@ def print_report(report: dict) -> None:
             print(f"      期望 {row['expected']}，实际前三是 {row['top']}")
     elif not low:
         print("\n全部命中且都排第一。可以开始提高难度（同义改写、跨文档问题）。")
+
+
+def run_refusal_eval(
+    retriever: Retriever,
+    items: list[dict],
+    k: int = 5,
+    min_coverage: float = MIN_COVERAGE,
+    use_llm: bool = False,
+) -> dict:
+    """在“资料里没有答案”的题集上测拒答能力。
+
+    这类题集不应该追求 Recall，而应该看：
+      - 正确拒答率越高越好
+      - 误答率越低越好
+    """
+    rows: list[dict] = []
+    refused = 0
+    for item in items:
+        question = item["question"]
+        hits = retriever.search(question, k=k)
+        result = answer(
+            question,
+            hits,
+            use_llm=use_llm,
+            min_coverage=min_coverage,
+        )
+        is_refused = result.mode in ("none", "hint")
+        refused += int(is_refused)
+        rows.append(
+            {
+                "question": question,
+                "refused": is_refused,
+                "mode": result.mode,
+                "warning": result.warning,
+                "answer": result.text,
+                "top": [f"{h.chunk.doc_id} / {h.chunk.section}" for h in hits[:3]],
+            }
+        )
+
+    total = len(items)
+    return {
+        "total": total,
+        "refused": refused,
+        "false_answers": total - refused,
+        "refusal_rate": refused / total if total else 0.0,
+        "false_answer_rate": (total - refused) / total if total else 0.0,
+        "threshold": min_coverage,
+        "rows": rows,
+    }
+
+
+def print_refusal_report(report: dict) -> None:
+    print(f"\n不可回答题数：{report['total']}")
+    print(f"拒答阈值：{report['threshold']:.0%}")
+    print("-" * 56)
+    print(f"正确拒答   {report['refused']:>3} 题  {report['refusal_rate']:>6.1%}")
+    print(f"误答       {report['false_answers']:>3} 题  {report['false_answer_rate']:>6.1%}")
+
+    false_rows = [row for row in report["rows"] if not row["refused"]]
+    if false_rows:
+        print("\n被误答的题：")
+        for row in false_rows:
+            print(f"  · {row['question']}")
+            print(f"      模式={row['mode']}  首位={row['top'][0] if row['top'] else '无召回'}")

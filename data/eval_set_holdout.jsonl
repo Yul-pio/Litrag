@@ -1,0 +1,22 @@
+# Hold-out set. Do not use these questions for tuning.
+# Created after the v1 retrieval pipeline was frozen; run only for final reporting.
+{"question": "According to the survey, what are the three main components of a RAG system?", "expected_doc": "2312.10997"}
+{"question": "How does the survey distinguish naive RAG from advanced RAG?", "expected_doc": "2312.10997"}
+{"question": "What does modular RAG add to the RAG paradigm?", "expected_doc": "2312.10997"}
+{"question": "Which evaluation aspects does the RAG survey discuss?", "expected_doc": "2312.10997"}
+{"question": "What challenges does the RAG survey identify for future work?", "expected_doc": "2312.10997"}
+{"question": "Why can long-context models perform worse when relevant information is in the middle?", "expected_doc": "2307.03172"}
+{"question": "What U-shaped performance pattern is observed in long-context experiments?", "expected_doc": "2307.03172"}
+{"question": "How does changing the number of retrieved documents affect long-context performance?", "expected_doc": "2307.03172"}
+{"question": "What are the two encoders in the DPR architecture?", "expected_doc": "2004.04906"}
+{"question": "What is the purpose of in-batch negatives during DPR training?", "expected_doc": "2004.04906"}
+{"question": "How are hard negatives selected for DPR training?", "expected_doc": "2004.04906"}
+{"question": "How does DPR compare dense retrieval with BM25?", "expected_doc": "2004.04906"}
+{"question": "What role does the knowledge retriever play in REALM?", "expected_doc": "2002.08909"}
+{"question": "How is REALM's retriever trained jointly with the language model?", "expected_doc": "2002.08909"}
+{"question": "What kind of retrieval index does REALM use?", "expected_doc": "2002.08909"}
+{"question": "Why does REALM refresh its document index asynchronously?", "expected_doc": "2002.08909"}
+{"question": "What are reflection tokens in Self-RAG?", "expected_doc": "2310.11511"}
+{"question": "What does the critique token in Self-RAG evaluate?", "expected_doc": "2310.11511"}
+{"question": "How does Self-RAG decide whether retrieval is needed?", "expected_doc": "2310.11511"}
+{"question": "How does Self-RAG use retrieved passages while generating an answer?", "expected_doc": "2310.11511"}

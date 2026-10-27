@@ -14,7 +14,7 @@ import os
 import sys
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8")
@@ -30,10 +30,18 @@ PAGE = PAGE_FILE.read_text(encoding="utf-8") if PAGE_FILE.exists() else "<h1>lit
 
 
 class Handler(BaseHTTPRequestHandler):
-    def _send(self, status: int, body: bytes, content_type: str) -> None:
+    def _send(
+        self,
+        status: int,
+        body: bytes,
+        content_type: str,
+        headers: dict[str, str] | None = None,
+    ) -> None:
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
+        for key, value in (headers or {}).items():
+            self.send_header(key, value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -46,14 +54,46 @@ class Handler(BaseHTTPRequestHandler):
         return self.headers.get("X-Session", "")
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path in ("/", "/index.html"):
             self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
             return
         if path == "/api/docs":
             self._json(200, service.list_documents(self.session))
             return
+        if path == "/api/file":
+            try:
+                doc_id = (parse_qs(parsed.query).get("doc") or [""])[0]
+                target, filename = service.get_document_file(self.session, doc_id)
+                safe_name = quote(filename, safe="")
+                self._send(
+                    200,
+                    target.read_bytes(),
+                    "application/pdf",
+                    {
+                        "Content-Disposition": f"inline; filename*=UTF-8''{safe_name}",
+                        "Cache-Control": "private, max-age=300",
+                    },
+                )
+            except ValueError as exc:
+                self._json(404, {"error": str(exc)})
+            except Exception as exc:
+                self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
+            return
         self._send(404, b"not found", "text/plain; charset=utf-8")
+
+    def do_DELETE(self) -> None:  # noqa: N802
+        path = urlparse(self.path).path
+        try:
+            if path == "/api/session":
+                self._json(200, service.clear_session(self.session))
+                return
+            self._send(404, b"not found", "text/plain; charset=utf-8")
+        except ValueError as exc:
+            self._json(400, {"error": str(exc)})
+        except Exception as exc:
+            self._json(500, {"error": f"{type(exc).__name__}: {exc}"})
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)

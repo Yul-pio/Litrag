@@ -4,7 +4,8 @@
     python run.py ingest data/docs                    # 建立索引
     python run.py ask "为什么要分块？"                 # 提问
     python run.py ask "为什么要分块？" --no-llm        # 强制用抽取式（不花钱）
-    python run.py eval                                # 跑评测
+    python run.py eval                                # 跑检索评测
+    python run.py eval-refusal                         # 跑拒答评测
     python run.py stats                               # 看索引统计
 """
 
@@ -27,7 +28,13 @@ if str(ROOT) not in sys.path:
 
 from litrag.answerer import answer
 from litrag.chunker import chunk_documents
-from litrag.evaluate import load_eval_set, print_report, run_eval
+from litrag.evaluate import (
+    load_eval_set,
+    print_refusal_report,
+    print_report,
+    run_eval,
+    run_refusal_eval,
+)
 from litrag.loader import load_dir
 from litrag.retriever import Retriever
 
@@ -94,6 +101,19 @@ def cmd_eval(args: argparse.Namespace) -> None:
     items = load_eval_set(args.eval_set)
     report = run_eval(retriever, items)
     print_report(report)
+
+
+def cmd_eval_refusal(args: argparse.Namespace) -> None:
+    retriever = Retriever.load(args.index)
+    items = load_eval_set(args.eval_set)
+    report = run_refusal_eval(
+        retriever,
+        items,
+        k=args.k,
+        min_coverage=args.threshold,
+        use_llm=args.llm,
+    )
+    print_refusal_report(report)
 
 
 def cmd_stats(args: argparse.Namespace) -> None:
@@ -187,6 +207,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--eval-set", default=str(ROOT / "data" / "eval_set.jsonl"), dest="eval_set"
     )
     p_eval.set_defaults(func=cmd_eval)
+
+    p_eval_refusal = sub.add_parser(
+        "eval-refusal", help="在不可回答题集上测拒答率与误答率"
+    )
+    p_eval_refusal.add_argument(
+        "--eval-set",
+        default=str(ROOT / "data" / "eval_set_unanswerable.jsonl"),
+        dest="eval_set",
+    )
+    p_eval_refusal.add_argument("-k", type=int, default=5, help="召回条数")
+    p_eval_refusal.add_argument(
+        "--threshold", type=float, default=0.2, help="词项覆盖率拒答阈值"
+    )
+    p_eval_refusal.add_argument(
+        "--llm", action="store_true", help="使用 LLM 作答；默认走确定性抽取式"
+    )
+    p_eval_refusal.set_defaults(func=cmd_eval_refusal)
 
     p_stats = sub.add_parser("stats", help="查看索引统计")
     p_stats.set_defaults(func=cmd_stats)

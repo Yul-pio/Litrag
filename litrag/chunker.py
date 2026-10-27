@@ -69,6 +69,38 @@ def _split_long_paragraph(text: str, target_size: int) -> list[str]:
     return pieces or [text]
 
 
+def _overlap_tail(text: str, overlap_size: int) -> str:
+    """返回用于下一块开头的真实文本尾部。
+
+    旧实现只保留最后一个段落，而且段落长度超过 overlap_size 时会完全
+    丢掉重叠。这里改为按字符窗口取尾部，并尽量对齐到句子边界，保证
+    ``overlap_size`` 参数真的对应“最多保留多少字符”。
+    """
+    if overlap_size <= 0 or not text:
+        return ""
+
+    tail = text[-overlap_size:].strip()
+    if len(text) <= overlap_size or not tail:
+        return tail
+
+    # 优先从句末标点之后开始，避免下一块从半句话开始。
+    boundary = re.search(r"[。！？!?；;]\s*|(?<=\.)\s+|\n+", tail)
+    if boundary and boundary.end() < len(tail):
+        candidate = tail[boundary.end():].strip()
+        if candidate:
+            return candidate
+
+    # 英文没有明显句末标点时，避免从单词中间开始。
+    if " " in tail:
+        first_space = tail.find(" ")
+        if 0 < first_space < len(tail) - 1:
+            candidate = tail[first_space + 1:].strip()
+            if candidate:
+                return candidate
+
+    return tail
+
+
 def chunk_document(
     doc: Document,
     target_size: int = 200,
@@ -93,9 +125,8 @@ def chunk_document(
             nonlocal buffer, buffer_len
             if not buffer:
                 return
-            # 先取出尾巴再清空，否则重叠永远拿不到东西（这是一个真实的 bug）
-            tail = buffer[-1] if (keep_tail and overlap_size > 0) else ""
             text = "\n".join(buffer).strip()
+            tail = _overlap_tail(text, overlap_size) if keep_tail else ""
             if text:
                 # 没有 Markdown 标题时（比如从 PDF 来的文本），
                 # 用页码当 section，至少比显示文件名更有信息量
@@ -110,7 +141,7 @@ def chunk_document(
                         page=page,
                     )
                 )
-            if tail and len(tail) <= overlap_size:
+            if tail:
                 buffer, buffer_len = [tail], len(tail)
             else:
                 buffer, buffer_len = [], 0

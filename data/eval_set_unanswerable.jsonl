@@ -1,0 +1,22 @@
+# Questions deliberately outside the indexed RAG literature.
+# A good extractive RAG system should refuse these instead of forcing an answer.
+{"question": "What is the capital city of Australia?"}
+{"question": "Who won the 2022 FIFA World Cup?"}
+{"question": "What is the population of Shanghai in 2026?"}
+{"question": "What is the boiling point of mercury?"}
+{"question": "How do I bake sourdough bread?"}
+{"question": "What is the stock price of Tesla today?"}
+{"question": "Who is the current CEO of OpenAI?"}
+{"question": "What is the distance between Earth and Mars?"}
+{"question": "What is the GDP of France in 2025?"}
+{"question": "What is the treatment for type 2 diabetes?"}
+{"question": "Which planet has the most moons?"}
+{"question": "Who wrote Pride and Prejudice?"}
+{"question": "What is the latest version of Python?"}
+{"question": "What is the weather in Beijing tomorrow?"}
+{"question": "How many people live in Tokyo?"}
+{"question": "What is the speed of light in water?"}
+{"question": "What is the 2025 Nobel Prize in Physics?"}
+{"question": "How do I change a car tire?"}
+{"question": "What is the recipe for a chocolate cake?"}
+{"question": "What time is it in London now?"}

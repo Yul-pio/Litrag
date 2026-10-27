@@ -19,6 +19,9 @@
               border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
               font-family: inherit; }
   .file-btn:hover { background: #f0f5ff; }
+  .file-btn:disabled { opacity: .45; cursor: not-allowed; }
+  .file-btn.danger { border-color: #c44; color: #c44; }
+  .file-btn.danger:hover:not(:disabled) { background: #fff0f0; }
   #status { font-size: 13px; color: #666; }
   .docs { font-size: 13px; color: #666; margin-top: 8px; }
   .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -37,6 +40,8 @@
   .cite { margin-top: 18px; font-size: 13px; color: #666; border-top: 1px dashed #ccc;
           padding-top: 14px; }
   .cite div { margin-bottom: 10px; }
+  .cite-link { margin-top: 5px; border: 0; padding: 0; background: transparent;
+               color: #2f6feb; font: inherit; cursor: pointer; text-decoration: underline; }
   .warn { margin-top: 14px; padding: 10px 12px; background: #fff4e5; color: #8a5a00;
           border-radius: 8px; font-size: 13px; }
   footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid #eee;
@@ -53,6 +58,7 @@
     <div class="row">
       <input type="file" id="files" accept="application/pdf" multiple hidden>
       <button class="file-btn" id="pick">选择 PDF 文件</button>
+      <button class="file-btn danger" id="clear" disabled>清空我的文献库</button>
       <span id="status"></span>
     </div>
     <div class="docs" id="docs">正在读取你的文献库…</div>
@@ -74,15 +80,25 @@
   </div>
 
   <footer>
-    检索 BM25 · 回答为原文摘录 · 46 题评测集 Recall@1 89.1% ·
+    检索 BM25 · 回答为原文摘录 · 46 题开发集 Recall@1 84.8% · hold-out Recall@1 95.0% ·
     <a href="https://github.com/Yul-pio/litrag">源码</a>
   </footer>
 
 <script>
+function newSessionId() {
+  try {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    return 's' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) {
+    return 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+}
+
 const SESSION = (() => {
   let s = localStorage.getItem('litrag_sid');
-  if (!s) {
-    s = 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  if (!s || s.length < 8) {
+    s = newSessionId();
     localStorage.setItem('litrag_sid', s);
   }
   return s;
@@ -98,6 +114,13 @@ const docsEl = document.getElementById('docs');
 const statusEl = document.getElementById('status');
 const fileInput = document.getElementById('files');
 const pick = document.getElementById('pick');
+const clearBtn = document.getElementById('clear');
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[ch]);
+}
 
 async function loadDocs() {
   try {
@@ -105,9 +128,11 @@ async function loadDocs() {
     const data = await res.json();
     if (!data.docs || data.docs.length === 0) {
       docsEl.textContent = '还没有上传——当前使用演示库（5 篇 RAG 论文）。';
+      clearBtn.disabled = true;
     } else {
       docsEl.textContent = `你的文献库（${data.docs.length} 篇）：` +
         data.docs.map(d => `${d.filename}（${d.chunks} 块）`).join('、');
+      clearBtn.disabled = false;
     }
   } catch (e) {
     docsEl.textContent = '读取文献库失败：' + e;
@@ -156,9 +181,13 @@ async function ask() {
     } else {
       answerEl.textContent = data.answer;
       citeEl.innerHTML = (data.citations || []).map(c => {
-        const pageText = (c.page && c.section !== `第 ${c.page} 页`) ? `，第 ${c.page} 页` : '';
-        return `<div><b>[${c.id}]</b> ${c.doc} / ${c.section}${pageText}` +
-               `<br>「${c.quote}」</div>`;
+        const pageText = c.page ? `，PDF 第 ${c.page} 页` : '';
+        const open = c.page
+          ? `<br><button class="cite-link" data-doc="${escapeHtml(c.doc)}" ` +
+            `data-page="${Number(c.page)}">打开原文第 ${Number(c.page)} 页</button>`
+          : '';
+        return `<div class="cite-item"><b>[${c.id}]</b> ${escapeHtml(c.doc)} / ` +
+               `${escapeHtml(c.section)}${pageText}<br>「${escapeHtml(c.quote)}」${open}</div>`;
       }).join('');
       warnEl.style.display = data.warning ? 'block' : 'none';
       warnEl.textContent = data.warning || '';
@@ -172,7 +201,60 @@ async function ask() {
   }
 }
 
+async function openCitation(docId, page) {
+  const win = window.open('', '_blank');
+  if (win) {
+    win.document.write('<p style="font-family:sans-serif">正在加载 PDF…</p>');
+  }
+  try {
+    const res = await fetch('/api/file?doc=' + encodeURIComponent(docId), {
+      headers: {'X-Session': SESSION}
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || `HTTP ${res.status}`);
+    }
+    const blob = await res.blob();
+    const baseUrl = URL.createObjectURL(blob);
+    const url = baseUrl + (page ? `#page=${page}` : '');
+    if (win) win.location.replace(url);
+    else window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(baseUrl), 60000);
+  } catch (err) {
+    if (win) win.close();
+    alert('打开 PDF 失败：' + err.message);
+  }
+}
+
+async function clearLibrary() {
+  if (!confirm('确定清空当前浏览器会话上传的文献吗？清空后会回到演示库。')) return;
+  clearBtn.disabled = true;
+  try {
+    const res = await fetch('/api/session', {
+      method: 'DELETE',
+      headers: {'X-Session': SESSION}
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+    statusEl.textContent = '文献库已清空，当前使用演示库。';
+    answerEl.textContent = '';
+    citeEl.innerHTML = '';
+    warnEl.style.display = 'none';
+    out.style.display = 'none';
+    loadDocs();
+  } catch (err) {
+    statusEl.textContent = '清空失败：' + err.message;
+    clearBtn.disabled = false;
+  }
+}
+
 pick.addEventListener('click', () => fileInput.click());
+clearBtn.addEventListener('click', clearLibrary);
+citeEl.addEventListener('click', event => {
+  const button = event.target.closest('button[data-doc]');
+  if (!button) return;
+  openCitation(button.dataset.doc, Number(button.dataset.page));
+});
 fileInput.addEventListener('change', () => {
   if (fileInput.files.length) uploadFiles(fileInput.files);
   fileInput.value = '';
