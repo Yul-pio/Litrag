@@ -155,11 +155,11 @@ async function ask() {
       answerEl.textContent = '出错了：' + data.error;
     } else {
       answerEl.textContent = data.answer;
-      citeEl.innerHTML = (data.citations || []).map(c =>
-        `<div><b>[${c.id}]</b> ${c.doc} / ${c.section}` +
-        (c.page ? `，第 ${c.page} 页` : '') +
-        `<br>「${c.quote}」</div>`
-      ).join('');
+      citeEl.innerHTML = (data.citations || []).map(c => {
+        const pageText = (c.page && c.section !== `第 ${c.page} 页`) ? `，第 ${c.page} 页` : '';
+        return `<div><b>[${c.id}]</b> ${c.doc} / ${c.section}${pageText}` +
+               `<br>「${c.quote}」</div>`;
+      }).join('');
       warnEl.style.display = data.warning ? 'block' : 'none';
       warnEl.textContent = data.warning || '';
     }

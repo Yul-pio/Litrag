@@ -155,10 +155,52 @@ def list_documents(sid: str | None) -> dict:
 
 
 # ---------------------------------------------------------------- 提问
+_QUESTION_MARKERS = (
+    "?", "？",
+    "什么", "怎么", "为什么", "如何", "哪", "是否", "多少", "几", "谁",
+    "吗", "呢", "请问",
+)
+_EN_MARKERS = (
+    "what", "why", "how", "which", "who", "when", "where", "does", "do ",
+    "is ", "are ", "can ", "could ", "should ", "explain", "compare",
+)
+
+
+def _looks_like_question(text: str) -> bool:
+    """判断输入是不是一个"问题"，而不是一堆关键词。
+
+    抽取式回答对关键词几乎无能为力：它会挑出所有含这个词的句子，
+    看起来就像在胡扯。与其硬答，不如提示用户换个问法。
+    """
+    lowered = text.lower()
+    if any(mark in text for mark in _QUESTION_MARKERS):
+        return True
+    if any(marker in lowered for marker in _EN_MARKERS):
+        return True
+    # 很长的输入通常是在描述问题，即使没有问号
+    return len(text) >= 20
+
+
 def ask(question: str, sid: str | None) -> dict:
     question = (question or "").strip()
     if not question:
         raise ValueError("问题不能为空")
+
+    if not _looks_like_question(question):
+        return {
+            "answer": (
+                f"「{question}」看起来是关键词，不是一个问题。\n\n"
+                "这个工具只会从原文里摘句子，不会归纳。试着问完整一点，例如：\n"
+                "· 这份报告的职业目标是什么？\n"
+                "· 作者的指导老师是谁？\n"
+                "· What are the three stages of RAG?"
+            ),
+            "mode": "hint",
+            "warning": None,
+            "source": "hint",
+            "citations": [],
+        }
+
     retriever, source = get_retriever(sid)
     hits = retriever.search(question, k=5)
     result = answer(question, hits, use_llm=True)
