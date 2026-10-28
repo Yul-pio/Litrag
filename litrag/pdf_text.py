@@ -366,6 +366,11 @@ def _unwrap(text: str) -> str:
 
         if merged and merged[-1]:
             prev = merged[-1]
+            # 小型大写字母排版（标题里的 S + ELF、C + RITIQUE）会把一个词拆成
+            # 多个极短的文本片段。这类片段之间不能补空格，直接拼回去。
+            if len(prev) <= 3 and not prev.endswith(ends_sentence):
+                merged[-1] = prev + line
+                continue
             if prev.endswith("-") and line[:1].islower():
                 merged[-1] = prev[:-1] + line
                 continue
