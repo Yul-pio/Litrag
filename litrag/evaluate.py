@@ -118,7 +118,7 @@ def run_refusal_eval(
     retriever: Retriever,
     items: list[dict],
     k: int = 5,
-    min_coverage: float = MIN_COVERAGE,
+    min_coverage: float | None = None,
     use_llm: bool = False,
 ) -> dict:
     """在“资料里没有答案”的题集上测拒答能力。
@@ -126,6 +126,9 @@ def run_refusal_eval(
     这类题集不应该追求 Recall，而应该看：
       - 正确拒答率越高越好
       - 误答率越低越好
+
+    min_coverage 传 None 时用默认的组合规则（覆盖率或分数）；
+    传具体数值时退化为「只看覆盖率」的对照实验。
     """
     rows: list[dict] = []
     refused = 0

@@ -1,0 +1,24 @@
+# 拒答测试集（冻结）：在调完阈值之后才新建，只用于最终报告，不参与调参。
+# 上一版 data/eval_set_unanswerable.jsonl 已经被用来扫阈值，属于 dev 集。
+#
+# 全部问题都与索引里的 RAG 文献无关，正确行为是拒答。
+{"question": "What is the tallest building in the world?"}
+{"question": "Who painted the Mona Lisa?"}
+{"question": "How do I apply for a passport?"}
+{"question": "What are the symptoms of influenza?"}
+{"question": "What is the exchange rate between USD and CNY today?"}
+{"question": "Which team won the NBA championship in 2024?"}
+{"question": "How do I cook rice in a rice cooker?"}
+{"question": "What is the legal drinking age in Germany?"}
+{"question": "What is the population of Canada?"}
+{"question": "How does a combustion engine work?"}
+{"question": "When was the Great Wall of China built?"}
+{"question": "What is the recommended dose of ibuprofen for adults?"}
+{"question": "How do I fix a leaking faucet?"}
+{"question": "What is the distance from Beijing to Shanghai?"}
+{"question": "Who wrote Harry Potter?"}
+{"question": "What is the capital of Brazil?"}
+{"question": "How do I write a resignation letter?"}
+{"question": "What is the speed limit on Chinese highways?"}
+{"question": "What is the weather like in Tokyo in December?"}
+{"question": "What is the best time of year to visit Japan?"}

@@ -23,9 +23,24 @@ from .retriever import Hit
 _SENT_SPLIT = re.compile(r"(?<=[。！？!?；;])\s*|\n+")
 _CITE_RE = re.compile(r"\[(\d+)\]")
 
-# 问题与资料的词项覆盖率低于这个值，就判定为「资料里没有」。
-# 这个阈值是拍出来的，应该用评测集去调：调低会多答错，调高会多拒答。
-MIN_COVERAGE = 0.2
+# ---------------------------------------------------------------- 拒答判断
+# 早期版本只看「前 3 块」的词项覆盖率，阈值 20%。在 20 题不可回答集上
+# 误答率高达 55%：因为把 3 个块拼起来，总能凑出几个查询词。
+#
+# 改成两个特征：
+#   1) cov_top1：只看第 1 名的块。它才是真正会被用来回答的块。
+#   2) top_score：第 1 名的 BM25 原始分数。
+#
+# 实验发现（dev = 66 题可回答 + 20 题不可回答）：
+#   - 单用 cov_top1 >= 0.34：英文论文集通过 91~95%，误答 10%，
+#     但中文短语料库（3 篇示例）通过率只有 58%，同义改写难例只有 25%。
+#   - 短语料库里 BM25 分数天然更高（中位数 40 vs 论文的 17），
+#     所以补一个「绝对分数」条件，把被覆盖率误杀的中文问题救回来。
+#
+# 最终规则：cov_top1 >= 0.34 或 top_score >= 20。
+# 注意：绝对分数依赖语料规模，换语料要重新校准；这是已知局限。
+MIN_COVERAGE = 0.34
+MIN_TOP_SCORE = 20.0
 
 # 第 2 名及以后的块，得分不到第 1 名的这个比例，就不再从它里面取句子。
 # 不加这条限制，答案里会混进「勉强相关」的噪声句。
@@ -74,6 +89,41 @@ def _coverage(question: str, hits: list[Hit], top_n: int = 3) -> float:
     for hit in hits[:top_n]:
         context.update(tokenize(f"{hit.chunk.section}\n{hit.chunk.text}"))
     return len(terms & context) / len(terms)
+
+
+def is_answerable(
+    question: str,
+    hits: list[Hit],
+    coverage_threshold: float | None = None,
+    score_threshold: float | None = None,
+) -> tuple[bool, dict]:
+    """判断「资料里到底有没有答案」。
+
+    两个特征取「或」：
+      - cov_top1：第 1 名块覆盖了多少查询实词（对长文档可靠）
+      - top_score：第 1 名的原始 BM25 分数（补偿短语料库覆盖率偏低）
+
+    传入 coverage_threshold 时只按覆盖率判断（供阈值扫描做对照实验用）。
+    """
+    if not hits:
+        return False, {"coverage_top1": 0.0, "top_score": 0.0, "reason": "no_hits"}
+
+    coverage_top1 = _coverage(question, hits, top_n=1)
+    top_score = hits[0].score
+
+    if coverage_threshold is not None:
+        ok = coverage_top1 >= coverage_threshold
+        return ok, {
+            "coverage_top1": coverage_top1,
+            "top_score": top_score,
+            "reason": "coverage_only",
+        }
+
+    cov_limit = MIN_COVERAGE
+    score_limit = MIN_TOP_SCORE if score_threshold is None else score_threshold
+    ok = coverage_top1 >= cov_limit or top_score >= score_limit
+    reason = "coverage" if coverage_top1 >= cov_limit else ("score" if ok else "low")
+    return ok, {"coverage_top1": coverage_top1, "top_score": top_score, "reason": reason}
 
 
 def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answer:
@@ -194,7 +244,7 @@ def answer(
     question: str,
     hits: list[Hit],
     use_llm: bool = True,
-    min_coverage: float = MIN_COVERAGE,
+    min_coverage: float | None = None,
 ) -> Answer:
     if not hits:
         return Answer(
@@ -205,14 +255,21 @@ def answer(
 
     # 先判「资料里到底有没有」，再决定要不要回答。
     # 顺序很重要：如果先让模型生成、再判断，它已经编完了。
-    coverage = _coverage(question, hits)
-    if coverage < min_coverage:
+    if min_coverage is None:
+        answerable, diag = is_answerable(question, hits)
+    else:
+        answerable, diag = is_answerable(question, hits, coverage_threshold=min_coverage)
+
+    if not answerable:
         return Answer(
             text="资料中没有找到与这个问题相关的内容。为避免编造，这里不给出回答。"
             "可以换一种问法，或者先把相关资料入库。",
             citations=[],
             mode="none",
-            warning=f"词项覆盖率仅 {coverage:.0%}（阈值 {min_coverage:.0%}），已拒答",
+            warning=(
+                f"覆盖率 {diag['coverage_top1']:.0%}、最高分 {diag['top_score']:.1f}，"
+                "均低于拒答阈值，已拒答"
+            ),
         )
 
     if use_llm and os.getenv("LITRAG_API_KEY"):
