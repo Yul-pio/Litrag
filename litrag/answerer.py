@@ -272,12 +272,27 @@ def answer(
             ),
         )
 
+    # 灰区：判成「能答」，但证据其实偏薄。
+    # 典型例子：「What is the capital of Brazil?」——capital 命中、brazil 没命中，
+    # 覆盖率 50% 刚好过线，答案看起来就像答非所问。
+    # 这种情况与其硬答，不如明确告诉用户「匹配度偏低，请核对原文」。
+    borderline = diag.get("coverage_top1", 1.0) < 0.6 and diag.get("top_score", 99.0) < MIN_TOP_SCORE
+    caveat = (
+        f"匹配度偏低（覆盖率 {diag['coverage_top1']:.0%}、最高分 {diag['top_score']:.1f}），"
+        "请核对引用原文"
+        if borderline
+        else None
+    )
+
     if use_llm and os.getenv("LITRAG_API_KEY"):
         try:
-            return _llm(question, hits)
+            result = _llm(question, hits)
         except Exception as exc:  # LLM 失败时自动降级，不让整个流程挂掉
-            fallback = _extractive(question, hits)
-            fallback.warning = f"LLM 调用失败，已降级为抽取式回答（{exc}）"
-            return fallback
+            result = _extractive(question, hits)
+            result.warning = f"LLM 调用失败，已降级为抽取式回答（{exc}）"
+    else:
+        result = _extractive(question, hits)
 
-    return _extractive(question, hits)
+    if caveat:
+        result.warning = f"{result.warning}；{caveat}" if result.warning else caveat
+    return result
