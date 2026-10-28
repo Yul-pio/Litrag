@@ -218,7 +218,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_eval_refusal.add_argument("-k", type=int, default=5, help="召回条数")
     p_eval_refusal.add_argument(
-        "--threshold", type=float, default=0.2, help="词项覆盖率拒答阈值"
+        "--threshold",
+        type=float,
+        default=None,
+        help="只按覆盖率判断的对照阈值；不填则用默认组合规则（覆盖率或分数）",
     )
     p_eval_refusal.add_argument(
         "--llm", action="store_true", help="使用 LLM 作答；默认走确定性抽取式"

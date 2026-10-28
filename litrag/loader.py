@@ -23,13 +23,30 @@ class Document:
 
 
 def _guess_title(text: str, fallback: str) -> str:
-    """优先取第一个 Markdown 标题做文档名。"""
+    """猜文档标题。
+
+    - Markdown：优先取第一个 `# 标题`
+    - PDF：没有 Markdown 标记，首页第一行通常就是论文标题
+      （早期版本这里直接回退成文件名，导致 title 是 "2310.11511" 这种编号，
+       既不利于展示，也没法用标题做检索加权）
+    """
+    saw_markdown = False
     for line in text.splitlines():
         line = line.strip()
         if line.startswith("#"):
-            return line.lstrip("#").strip() or fallback
-        if line:
+            saw_markdown = True
+            title = line.lstrip("#").strip()
+            if title:
+                return title
+            continue
+        if not line:
+            continue
+        if saw_markdown:
             break
+        # PDF 首页：第一行往往就是标题；太短（页眉）或太长（正文）都不要
+        if 8 <= len(line) <= 220:
+            return line
+        break
     return fallback
 
 

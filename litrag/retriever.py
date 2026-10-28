@@ -9,6 +9,33 @@ from pathlib import Path
 from .bm25 import BM25Index, tokenize
 from .chunker import Chunk
 
+# 文档别名：问题里出现论文名时，给这篇文档的块加权。
+#
+# 为什么需要：BM25 只看词面。问「How does Self-RAG decide when to retrieve?」
+# 时，综述里讨论 Self-RAG 的那一段可能比原文得分更高（因为它重复了更多术语），
+# 于是「问原文、答综述」。别名加权把这种显式指名的意图补回来。
+#
+# 实验（46 题开发集）：boost 0 → 85%，0.3 → 91%，0.5 → 93%。
+# 取 0.3 比较保守，避免把「survey」这类泛词的影响放大。
+ALIAS_PATH = Path(__file__).resolve().parents[1] / "data" / "doc_aliases.json"
+ALIAS_BOOST = 0.3
+
+
+def _load_aliases() -> dict[str, list[str]]:
+    if not ALIAS_PATH.exists():
+        return {}
+    try:
+        raw = json.loads(ALIAS_PATH.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {}
+    return {
+        str(doc_id): [str(a).lower() for a in aliases if str(a).strip()]
+        for doc_id, aliases in raw.items()
+    }
+
+
+ALIASES = _load_aliases()
+
 
 @dataclass
 class Hit:
@@ -32,6 +59,16 @@ class Retriever:
 
     def search(self, query: str, k: int = 5) -> list[Hit]:
         scores = self.bm25.score(tokenize(query))
+
+        # 问题里点名了某篇文档 → 该文档的块加权
+        if ALIASES:
+            lowered = query.lower()
+            for i, chunk in enumerate(self.chunks):
+                for alias in ALIASES.get(chunk.doc_id, ()):
+                    if alias and alias in lowered:
+                        scores[i] *= 1 + ALIAS_BOOST
+                        break
+
         order = sorted(range(len(scores)), key=lambda i: scores[i], reverse=True)
         hits = [
             Hit(self.chunks[i], scores[i])

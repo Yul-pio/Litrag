@@ -13,7 +13,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .answerer import MIN_COVERAGE, answer
+from .answerer import MIN_COVERAGE, MIN_TOP_SCORE, answer
 from .retriever import Retriever
 
 
@@ -168,7 +168,11 @@ def run_refusal_eval(
 
 def print_refusal_report(report: dict) -> None:
     print(f"\n不可回答题数：{report['total']}")
-    print(f"拒答阈值：{report['threshold']:.0%}")
+    threshold = report.get("threshold")
+    if threshold is None:
+        print(f"拒答规则：cov_top1 ≥ {MIN_COVERAGE:.2f} 或 top_score ≥ {MIN_TOP_SCORE:.0f}（默认组合规则）")
+    else:
+        print(f"拒答阈值：{threshold:.0%}（仅用覆盖率，对照模式）")
     print("-" * 56)
     print(f"正确拒答   {report['refused']:>3} 题  {report['refusal_rate']:>6.1%}")
     print(f"误答       {report['false_answers']:>3} 题  {report['false_answer_rate']:>6.1%}")
