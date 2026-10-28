@@ -181,7 +181,7 @@ async function ask() {
     } else {
       answerEl.textContent = data.answer;
       citeEl.innerHTML = (data.citations || []).map(c => {
-        const pageText = c.page ? `，PDF 第 ${c.page} 页` : '';
+        const pageText = (c.page && c.section !== `第 ${c.page} 页`) ? `，PDF 第 ${c.page} 页` : '';
         const open = c.page
           ? `<br><button class="cite-link" data-doc="${escapeHtml(c.doc)}" ` +
             `data-page="${Number(c.page)}">打开原文第 ${Number(c.page)} 页</button>`
