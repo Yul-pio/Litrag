@@ -79,6 +79,11 @@ def application(environ, start_response):
         if method == "DELETE" and path == "/api/session":
             return _json(start_response, "200 OK", service.clear_session(sid))
 
+        if method == "DELETE" and path == "/api/doc":
+            query = parse_qs(environ.get("QUERY_STRING", ""))
+            doc_id = (query.get("doc") or [""])[0]
+            return _json(start_response, "200 OK", service.delete_document(sid, doc_id))
+
         if method == "POST" and path == "/api/ask":
             length = int(environ.get("CONTENT_LENGTH") or 0)
             payload = json.loads(environ["wsgi.input"].read(length) or b"{}")

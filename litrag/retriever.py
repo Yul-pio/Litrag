@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .bm25 import BM25Index, tokenize
 from .chunker import Chunk
+from .query import build_query_plan
 
 # 文档别名：问题里出现论文名时，给这篇文档的块加权。
 #
@@ -18,7 +19,7 @@ from .chunker import Chunk
 # 实验（46 题开发集）：boost 0 → 85%，0.3 → 91%，0.5 → 93%。
 # 取 0.3 比较保守，避免把「survey」这类泛词的影响放大。
 ALIAS_PATH = Path(__file__).resolve().parents[1] / "data" / "doc_aliases.json"
-ALIAS_BOOST = 0.3
+ALIAS_BOOST = 1.5
 
 
 def _load_aliases() -> dict[str, list[str]]:
@@ -58,11 +59,16 @@ class Retriever:
         self.bm25.fit(tokenized)
 
     def search(self, query: str, k: int = 5) -> list[Hit]:
-        scores = self.bm25.score(tokenize(query))
+        plan = build_query_plan(query)
+        scores = self.bm25.score(tokenize(plan.original))
+        if plan.english_terms:
+            # 中文问题查英文论文时，英文检索词比中文 token 更有区分度。
+            translated = self.bm25.score(tokenize(" ".join(plan.english_terms)))
+            scores = [base + 5.0 * cross for base, cross in zip(scores, translated)]
 
         # 问题里点名了某篇文档 → 该文档的块加权
         if ALIASES:
-            lowered = query.lower()
+            lowered = plan.expanded.lower()
             for i, chunk in enumerate(self.chunks):
                 for alias in ALIASES.get(chunk.doc_id, ()):
                     if alias and alias in lowered:

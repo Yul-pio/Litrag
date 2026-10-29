@@ -15,6 +15,7 @@ import os
 import re
 import urllib.error
 import urllib.request
+from collections import Counter
 from dataclasses import dataclass
 
 from .bm25 import content_terms, tokenize
@@ -52,6 +53,7 @@ class Citation:
     id: int
     chunk_id: str
     doc: str
+    title: str
     section: str
     page: int | None
     quote: str
@@ -63,6 +65,8 @@ class Answer:
     citations: list[Citation]
     mode: str                 # "extractive" | "llm" | "none"
     warning: str | None = None
+    headline: str | None = None
+    strength: str = "medium"  # "strong" | "medium" | "none"
 
 
 def _to_citation(idx: int, hit: Hit, quote: str) -> Citation:
@@ -70,10 +74,24 @@ def _to_citation(idx: int, hit: Hit, quote: str) -> Citation:
         id=idx,
         chunk_id=hit.chunk.chunk_id,
         doc=hit.chunk.doc_id,
+        title=hit.chunk.title,
         section=hit.chunk.section,
         page=hit.chunk.page,
         quote=quote.strip()[:160],
     )
+
+
+def _headline(text: str, limit: int = 140) -> str:
+    """从回答中取一条适合放在卡片首行的短结论。"""
+    first = re.split(r"\n+|(?<=[。！？!?])\s*", text.strip())[0]
+    first = re.sub(r"^(结论|答案|回答)[:：]\s*", "", first)
+    first = _CITE_RE.sub("", first).strip()
+    if len(first) > limit:
+        clipped = first[:limit].rstrip()
+        if " " in clipped:
+            clipped = clipped.rsplit(" ", 1)[0]
+        first = clipped.rstrip(" ,，;；") + "…"
+    return first
 
 
 def _coverage(question: str, hits: list[Hit], top_n: int = 3) -> float:
@@ -127,58 +145,80 @@ def is_answerable(
 
 
 def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answer:
-    """从召回的块里挑原文句子拼成答案。
-
-    排序逻辑：先按块的得分顺序看，每块最多取两句、并保持句子的原始顺序。
-    这样读起来是「最相关的那一节先说，其次才是补充」，而不是句子满天飞。
-    """
-    q_tokens = set(tokenize(question))
-    picked: list[tuple[int, int, str, Hit]] = []
+    """从召回的块里挑出最相关、最像完整结论的原文句子。"""
+    q_terms = set(content_terms(question))
     best_score = hits[0].score if hits else 0.0
+    candidates: list[tuple[float, int, int, str, Hit]] = []
 
     for idx, hit in enumerate(hits, start=1):
         if idx > 1 and hit.score < best_score * RELATIVE_CHUNK_THRESHOLD:
             break
-        scored: list[tuple[float, int, str]] = []
         for pos, sent in enumerate(_SENT_SPLIT.split(hit.chunk.text)):
             sent = sent.strip()
-            if len(sent) < 12:
+            if sent.startswith("-RAG") and "self-rag" in question.lower():
+                sent = "Self-RAG" + sent[4:]
+            if len(sent) < 24 or len(sent) > 500:
                 continue
-            s_tokens = set(tokenize(sent))
-            overlap = len(q_tokens & s_tokens)
+            if sent.strip().lower() == (hit.chunk.title or "").strip().lower():
+                continue
+            if re.match(r"^(input|output|question|answer|table|figure|fig\.|algorithm|example|prompt)\b", sent, re.I):
+                continue
+            if not (sent[0].isupper() or "\u4e00" <= sent[0] <= "\u9fff"):
+                continue
+            s_terms = set(content_terms(sent))
+            overlap = len(q_terms & s_terms)
             if overlap == 0:
                 continue
-            # 用 sqrt 长度归一化，避免长句仅因为词多就占优
-            score = overlap / (len(s_tokens) ** 0.5)
-            scored.append((score, pos, sent))
+            complete = 1.0 if sent[-1] in ".。!?！？；;" else 0.0
+            score = overlap / (len(s_terms) ** 0.5) + complete * 0.08
+            candidates.append((score, idx, pos, sent, hit))
 
-        scored.sort(key=lambda x: x[0], reverse=True)
-        for _, pos, sent in scored[:2]:
-            picked.append((idx, pos, sent, hit))
-        if len(picked) >= max_sentences:
-            break
-
-    if not picked:
+    if not candidates:
         top = hits[0]
         sent = top.chunk.text[:200]
         return Answer(
             text=f"没有找到与问题高度相关的句子，以下是最接近的原文片段[1]：\n{sent}",
             citations=[_to_citation(1, top, sent)],
             mode="extractive",
+            headline="找到了接近原文的片段，但证据不够充分",
+            strength="medium",
         )
 
-    picked = picked[:max_sentences]
-    picked.sort(key=lambda x: (x[0], x[1]))  # 按块顺序，块内按原文顺序
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    picked: list[tuple[float, int, int, str, Hit]] = []
+    per_chunk = Counter()
+    for candidate in candidates:
+        idx = candidate[1]
+        if per_chunk[idx] >= 2:
+            continue
+        picked.append(candidate)
+        per_chunk[idx] += 1
+        if len(picked) >= max_sentences:
+            break
 
-    body = "\n\n".join(f"{sent}[{idx}]" for idx, _, sent, _ in picked)
+    picked.sort(key=lambda item: (item[1], item[2]))
+    body = "\n\n".join(f"{sent}[{idx}]" for _, idx, _, sent, _ in picked)
     citations, used = [], set()
-    for idx, _, sent, hit in picked:
+    for _, idx, _, sent, hit in picked:
         if idx in used:
             continue
         used.add(idx)
         citations.append(_to_citation(idx, hit, sent))
 
-    return Answer(text=body, citations=citations, mode="extractive")
+    complete = [
+        item for item in picked
+        if len(item[3]) >= 36
+        and item[3][-1] in ".。!?！？；;"
+        and (item[3][0].isupper() or "\u4e00" <= item[3][0] <= "\u9fff")
+    ]
+    headline_source = max(complete, key=lambda item: item[0])[3] if complete else picked[0][3]
+    return Answer(
+        text=body,
+        citations=citations,
+        mode="extractive",
+        headline=_headline(headline_source),
+        strength="strong",
+    )
 
 
 def _llm(question: str, hits: list[Hit]) -> Answer:
@@ -237,7 +277,14 @@ def _llm(question: str, hits: list[Hit]) -> Answer:
     if not used_ids:
         warning = "模型未输出任何引用标注，可信度存疑"
 
-    return Answer(text=text, citations=citations, mode="llm", warning=warning)
+    return Answer(
+        text=text,
+        citations=citations,
+        mode="llm",
+        warning=warning,
+        headline=_headline(text),
+        strength="strong",
+    )
 
 
 def answer(
@@ -245,31 +292,34 @@ def answer(
     hits: list[Hit],
     use_llm: bool = True,
     min_coverage: float | None = None,
+    retrieval_query: str | None = None,
 ) -> Answer:
+    lookup_query = retrieval_query or question
     if not hits:
         return Answer(
             text="没有检索到相关内容。请确认文档已入库，或换一种问法。",
             citations=[],
             mode="none",
+            headline="没有检索到可用证据",
+            strength="none",
         )
 
     # 先判「资料里到底有没有」，再决定要不要回答。
     # 顺序很重要：如果先让模型生成、再判断，它已经编完了。
     if min_coverage is None:
-        answerable, diag = is_answerable(question, hits)
+        answerable, diag = is_answerable(lookup_query, hits)
     else:
-        answerable, diag = is_answerable(question, hits, coverage_threshold=min_coverage)
+        answerable, diag = is_answerable(lookup_query, hits, coverage_threshold=min_coverage)
 
     if not answerable:
         return Answer(
-            text="资料中没有找到与这个问题相关的内容。为避免编造，这里不给出回答。"
-            "可以换一种问法，或者先把相关资料入库。",
+            text="现有资料不足以支持这个问题。为避免编造，系统没有生成结论。"
+            "可以换一种问法，或者补充相关论文后再试。",
             citations=[],
             mode="none",
-            warning=(
-                f"覆盖率 {diag['coverage_top1']:.0%}、最高分 {diag['top_score']:.1f}，"
-                "均低于拒答阈值，已拒答"
-            ),
+            warning="当前问题和文献内容的匹配度不足，系统已停止回答。",
+            headline="现有资料不足以回答这个问题",
+            strength="none",
         )
 
     # 灰区：判成「能答」，但证据其实偏薄。
@@ -277,22 +327,20 @@ def answer(
     # 覆盖率 50% 刚好过线，答案看起来就像答非所问。
     # 这种情况与其硬答，不如明确告诉用户「匹配度偏低，请核对原文」。
     borderline = diag.get("coverage_top1", 1.0) < 0.6 and diag.get("top_score", 99.0) < MIN_TOP_SCORE
-    caveat = (
-        f"匹配度偏低（覆盖率 {diag['coverage_top1']:.0%}、最高分 {diag['top_score']:.1f}），"
-        "请核对引用原文"
-        if borderline
-        else None
-    )
+    caveat = "证据匹配度一般，请重点核对下方引用原文。" if borderline else None
 
     if use_llm and os.getenv("LITRAG_API_KEY"):
         try:
             result = _llm(question, hits)
         except Exception as exc:  # LLM 失败时自动降级，不让整个流程挂掉
-            result = _extractive(question, hits)
+            result = _extractive(lookup_query, hits)
             result.warning = f"LLM 调用失败，已降级为抽取式回答（{exc}）"
     else:
-        result = _extractive(question, hits)
+        result = _extractive(lookup_query, hits)
 
     if caveat:
         result.warning = f"{result.warning}；{caveat}" if result.warning else caveat
+    result.strength = "medium" if borderline else "strong"
+    if not result.headline:
+        result.headline = _headline(result.text)
     return result

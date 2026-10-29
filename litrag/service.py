@@ -15,14 +15,18 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import threading
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .answerer import answer
 from .chunker import Chunk, chunk_document
 from .loader import load_file
+from .query import build_query_plan
 from .retriever import Retriever
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -33,6 +37,15 @@ SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 MAX_DOCS = 10
 MAX_FILE_BYTES = 8 * 1024 * 1024
 MAX_CHUNKS = 4000
+
+try:
+    SESSION_TTL_SECONDS = max(
+        60.0, float(os.getenv("LITRAG_SESSION_TTL_HOURS", "24")) * 3600
+    )
+except ValueError:
+    SESSION_TTL_SECONDS = 24 * 3600
+_CLEANUP_INTERVAL_SECONDS = 300
+_last_cleanup = 0.0
 
 _lock = threading.Lock()
 _user_cache: dict[str, Retriever] = {}
@@ -64,9 +77,43 @@ def _load_meta(sid: str) -> dict:
 
 def _save_meta(sid: str, meta: dict) -> None:
     _session_dir(sid).mkdir(parents=True, exist_ok=True)
+    meta["updated_at"] = time.time()
     _index_path(sid).write_text(
         json.dumps(meta, ensure_ascii=False), encoding="utf-8"
     )
+
+
+def _purge_expired_sessions(force: bool = False) -> int:
+    """清理超过保留期的匿名会话，避免上传文件永久留在服务器。"""
+    global _last_cleanup
+    now = time.time()
+    if not force and now - _last_cleanup < _CLEANUP_INTERVAL_SECONDS:
+        return 0
+    _last_cleanup = now
+
+    root = UPLOAD_ROOT.resolve()
+    if not root.exists():
+        return 0
+
+    removed = 0
+    for child in list(root.iterdir()):
+        if not child.is_dir() or not valid_session(child.name):
+            continue
+        target = child.resolve()
+        if target.parent != root:
+            continue
+        try:
+            index = _index_path(child.name)
+            marker = index.stat().st_mtime if index.exists() else target.stat().st_mtime
+            if now - marker <= SESSION_TTL_SECONDS:
+                continue
+            with _lock:
+                _user_cache.pop(child.name, None)
+            shutil.rmtree(target)
+            removed += 1
+        except OSError:
+            continue
+    return removed
 
 
 # ---------------------------------------------------------------- 取索引
@@ -80,6 +127,7 @@ def _global() -> Retriever:
 
 def get_retriever(sid: str | None) -> tuple[Retriever, str]:
     """返回 (检索器, 来源)。来源是 'user' 或 'global'。"""
+    _purge_expired_sessions()
     if valid_session(sid) and _index_path(sid).exists():
         with _lock:
             if sid not in _user_cache:
@@ -93,6 +141,7 @@ def get_retriever(sid: str | None) -> tuple[Retriever, str]:
 # ---------------------------------------------------------------- 上传
 def add_document(sid: str | None, filename: str, data: bytes) -> dict:
     """保存并索引一个 PDF，返回统计信息。失败时抛 ValueError。"""
+    _purge_expired_sessions()
     if not valid_session(sid):
         raise ValueError("会话标识无效，请刷新页面重试")
     if len(data) > MAX_FILE_BYTES:
@@ -134,16 +183,65 @@ def add_document(sid: str | None, filename: str, data: bytes) -> dict:
         target.unlink(missing_ok=True)
         raise ValueError(f"这个会话的文档太多了（上限 {MAX_CHUNKS} 块），刷新页面换一个会话")
 
-    meta["docs"].append({"doc_id": doc_id, "filename": safe_name, "chunks": len(chunks),
-                         "chars": sum(len(t) for _, t in doc.pages)})
+    chars = sum(len(t) for _, t in doc.pages)
+    pages = len(doc.pages)
+    avg_chars = chars / max(pages, 1)
+    quality = "good" if chars >= 800 and avg_chars >= 120 else "review"
+    parse_note = (
+        "文本层清晰，可直接检索"
+        if quality == "good"
+        else "可提取文字偏少，建议核对解析结果"
+    )
+    meta["docs"].append({
+        "doc_id": doc_id,
+        "filename": safe_name,
+        "title": doc.title or doc_id,
+        "pages": pages,
+        "chunks": len(chunks),
+        "chars": chars,
+        "quality": quality,
+        "parse_note": parse_note,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
     meta["chunks"].extend(c.to_dict() for c in chunks)
     _save_meta(sid, meta)
 
     with _lock:
         _user_cache.pop(sid, None)  # 下次请求重新加载
 
-    return {"doc_id": doc_id, "chunks": len(chunks),
-            "chars": sum(len(t) for _, t in doc.pages), "total_docs": len(meta["docs"])}
+    return {
+        "doc_id": doc_id,
+        "title": doc.title or doc_id,
+        "pages": pages,
+        "chunks": len(chunks),
+        "chars": chars,
+        "quality": quality,
+        "parse_note": parse_note,
+        "total_docs": len(meta["docs"]),
+    }
+
+
+def delete_document(sid: str | None, doc_id: str) -> dict:
+    """删除当前会话中的单篇文档及其索引。演示库文档不会被删除。"""
+    if not valid_session(sid):
+        raise ValueError("会话标识无效，请刷新页面重试")
+    if not doc_id or len(doc_id) > 100:
+        raise ValueError("文档标识无效")
+
+    with _lock:
+        meta = _load_meta(sid)
+        target_doc = next((d for d in meta["docs"] if d["doc_id"] == doc_id), None)
+        if target_doc is None:
+            raise ValueError("找不到这篇文档，可能已被删除")
+        meta["docs"] = [d for d in meta["docs"] if d["doc_id"] != doc_id]
+        meta["chunks"] = [c for c in meta["chunks"] if c.get("doc_id") != doc_id]
+        _save_meta(sid, meta)
+        _user_cache.pop(sid, None)
+
+        target = _session_dir(sid) / f"{doc_id}.pdf"
+        if target.is_file() and target.resolve().parent == _session_dir(sid).resolve():
+            target.unlink(missing_ok=True)
+    return {"ok": True, "doc_id": doc_id, "remaining_docs": len(meta["docs"])}
 
 
 def get_document_file(sid: str | None, doc_id: str) -> tuple[Path, str]:
@@ -192,12 +290,50 @@ def clear_session(sid: str | None) -> dict:
 
 
 def list_documents(sid: str | None) -> dict:
-    if not valid_session(sid):
-        return {"source": "global", "docs": []}
-    if not _index_path(sid).exists():
-        return {"source": "global", "docs": []}
+    _purge_expired_sessions()
+    retention_hours = round(SESSION_TTL_SECONDS / 3600, 1)
+    if not valid_session(sid) or not _index_path(sid).exists():
+        return {
+            "source": "global",
+            "docs": [],
+            "demo_docs": _demo_documents(),
+            "retention_hours": retention_hours,
+        }
     meta = _load_meta(sid)
-    return {"source": "user", "docs": meta["docs"]}
+    if not meta.get("docs"):
+        return {
+            "source": "global",
+            "docs": [],
+            "demo_docs": _demo_documents(),
+            "retention_hours": retention_hours,
+        }
+    return {
+        "source": "user",
+        "docs": meta["docs"],
+        "demo_docs": _demo_documents(),
+        "retention_hours": retention_hours,
+    }
+
+
+def _demo_documents() -> list[dict]:
+    try:
+        retriever = _global()
+    except Exception:
+        return []
+    docs: dict[str, dict] = {}
+    for chunk in retriever.chunks:
+        item = docs.setdefault(
+            chunk.doc_id,
+            {
+                "doc_id": chunk.doc_id,
+                "title": chunk.title or chunk.doc_id,
+                "chunks": 0,
+                "pages": 0,
+            },
+        )
+        item["chunks"] += 1
+        item["pages"] = max(item["pages"], chunk.page or 0)
+    return list(docs.values())
 
 
 # ---------------------------------------------------------------- 提问
@@ -247,13 +383,28 @@ def ask(question: str, sid: str | None) -> dict:
             "citations": [],
         }
 
+    plan = build_query_plan(question)
     retriever, source = get_retriever(sid)
     hits = retriever.search(question, k=5)
-    result = answer(question, hits, use_llm=True)
+    result = answer(question, hits, use_llm=True, retrieval_query=plan.expanded)
+    docs_used: list[str] = []
+    for hit in hits:
+        if hit.chunk.doc_id not in docs_used:
+            docs_used.append(hit.chunk.doc_id)
     return {
         "answer": result.text,
+        "headline": result.headline or result.text[:160],
         "mode": result.mode,
         "warning": result.warning,
         "source": source,
+        "evidence_strength": result.strength,
+        "query_expanded": plan.translated,
+        "matched_terms": list(plan.translations),
+        "docs_used": docs_used,
+        "suggestions": [
+            "这篇论文要解决什么问题？",
+            "作者用什么实验验证方法有效？",
+            "这篇论文有哪些局限？",
+        ],
         "citations": [c.__dict__ for c in result.citations],
     }

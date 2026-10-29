@@ -3,276 +3,107 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>litrag · 读论文，答案带页码</title>
+<title>litrag · 带原文证据的文献工作台</title>
 <style>
-  :root { color-scheme: light dark; }
-  body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-         max-width: 760px; margin: 40px auto; padding: 0 20px; line-height: 1.7; }
-  h1 { font-size: 24px; margin: 0 0 8px; }
-  .lead { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
-  .sub { color: #555; font-size: 15px; margin-bottom: 20px; }
-  .panel { border: 1px dashed #cfd4dd; border-radius: 10px; padding: 14px 16px;
-           margin-bottom: 20px; font-size: 14px; }
-  .panel b { color: #222; }
-  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-  .file-btn { border: 1px solid #2f6feb; color: #2f6feb; background: transparent;
-              border-radius: 8px; padding: 6px 14px; font-size: 13px; cursor: pointer;
-              font-family: inherit; }
-  .file-btn:hover { background: #f0f5ff; }
-  .file-btn:disabled { opacity: .45; cursor: not-allowed; }
-  .file-btn.danger { border-color: #c44; color: #c44; }
-  .file-btn.danger:hover:not(:disabled) { background: #fff0f0; }
-  #status { font-size: 13px; color: #666; }
-  .docs { font-size: 13px; color: #666; margin-top: 8px; }
-  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-  .chip { border: 1px solid #d6d9e0; background: transparent; color: inherit;
-          border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer;
-          font-family: inherit; }
-  .chip:hover { border-color: #2f6feb; color: #2f6feb; }
-  textarea { width: 100%; box-sizing: border-box; padding: 12px; font-size: 15px;
-             border: 1px solid #ccc; border-radius: 8px; min-height: 76px;
-             font-family: inherit; resize: vertical; }
-  button.go { margin-top: 10px; padding: 10px 22px; font-size: 15px; cursor: pointer;
-              border: 0; border-radius: 8px; background: #2f6feb; color: #fff; }
-  button.go:disabled { background: #9ab; cursor: wait; }
-  #out { margin-top: 26px; display: none; }
-  .answer { white-space: pre-wrap; }
-  .cite { margin-top: 18px; font-size: 13px; color: #666; border-top: 1px dashed #ccc;
-          padding-top: 14px; }
-  .cite div { margin-bottom: 10px; }
-  .cite-link { margin-top: 5px; border: 0; padding: 0; background: transparent;
-               color: #2f6feb; font: inherit; cursor: pointer; text-decoration: underline; }
-  .warn { margin-top: 14px; padding: 10px 12px; background: #fff4e5; color: #8a5a00;
-          border-radius: 8px; font-size: 13px; }
-  footer { margin-top: 40px; padding-top: 14px; border-top: 1px solid #eee;
-           color: #999; font-size: 12px; }
+  :root {
+    --bg:#f3f1ea; --surface:#fffdf8; --surface2:#f8f6ef; --ink:#17241f;
+    --muted:#6f7b74; --line:#dddcd3; --line2:#c9c8bd; --accent:#0b7668;
+    --accent2:#07594f; --accentSoft:#e3f2ee; --amber:#b97012;
+    --amberSoft:#fff2dc; --danger:#b14a42; --shadow:0 18px 54px rgba(31,45,39,.08);
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;color:var(--ink);min-height:100vh;line-height:1.55;background:radial-gradient(circle at 8% 0%,rgba(11,118,104,.10),transparent 28rem),radial-gradient(circle at 92% 18%,rgba(185,112,18,.07),transparent 24rem),var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+  button,textarea,input{font:inherit} button{color:inherit} a{color:var(--accent)}
+  .topbar{position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(201,200,189,.75);background:rgba(243,241,234,.86);backdrop-filter:blur(18px)}
+  .topbar-inner{max-width:1480px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:16px}
+  .brand{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink)}
+  .brand-mark{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;color:#fff;background:var(--ink);font-family:Georgia,serif;font-size:19px;font-style:italic}
+  .brand-name{font-weight:750;letter-spacing:-.02em;font-size:19px}.brand-sub{color:var(--muted);font-size:12px;margin-left:2px}
+  .top-spacer{flex:1}.trust-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.58);color:var(--muted);font-size:12px}
+  .trust-dot{width:7px;height:7px;border-radius:50%;background:#37a178;box-shadow:0 0 0 4px rgba(55,161,120,.11)}
+  .top-link{color:var(--muted);text-decoration:none;font-size:13px;padding:8px 10px}.top-link:hover{color:var(--ink)}
+  .workspace{max-width:1480px;margin:0 auto;padding:22px 24px 36px;display:grid;grid-template-columns:270px minmax(0,1fr) 330px;gap:16px;align-items:start}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+  .library-panel{padding:16px;position:sticky;top:82px}.main-panel{min-height:calc(100vh - 106px);padding:32px;overflow:hidden}.evidence-panel{padding:16px;position:sticky;top:82px;max-height:calc(100vh - 104px);overflow:auto}
+  .panel-kicker{color:var(--muted);font-size:11px;letter-spacing:.13em;text-transform:uppercase;font-weight:700}.panel-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.panel-title{font-size:15px;font-weight:750;letter-spacing:-.01em}
+  .count-badge{display:inline-flex;align-items:center;min-height:24px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:2px 9px;font-size:11px}
+  .dropzone{width:100%;border:1.5px dashed var(--line2);border-radius:14px;background:linear-gradient(180deg,rgba(227,242,238,.42),rgba(248,246,239,.7));padding:17px 13px;text-align:left;cursor:pointer;transition:.18s ease}
+  .dropzone:hover,.dropzone.dragging{border-color:var(--accent);background:var(--accentSoft);transform:translateY(-1px)}.dropzone-icon{font-size:20px;color:var(--accent);margin-bottom:6px}.dropzone-title{font-size:13px;font-weight:700}.dropzone-note{color:var(--muted);font-size:11px;margin-top:3px}
+  .library-mode{margin:13px 2px 8px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between;gap:8px}.doc-list{display:grid;gap:8px}.doc-card{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--surface2);position:relative}.doc-card.demo{opacity:.78}
+  .doc-card-top{display:flex;gap:8px;align-items:flex-start}.doc-icon{flex:0 0 auto;width:26px;height:31px;border-radius:7px;background:#fff;border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);font-size:11px;font-weight:800}.doc-main{min-width:0;flex:1}
+  .doc-name{font-size:12px;font-weight:700;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.doc-meta{color:var(--muted);font-size:10px;margin-top:4px;display:flex;flex-wrap:wrap;gap:4px 7px}.doc-badge{display:inline-flex;align-items:center;border-radius:999px;padding:1px 6px;background:var(--accentSoft);color:var(--accent2);font-size:9px;font-weight:700}.doc-badge.review{background:var(--amberSoft);color:var(--amber)}
+  .doc-delete{border:0;background:transparent;color:#9a9e98;cursor:pointer;width:24px;height:24px;border-radius:7px;padding:0;flex:0 0 auto}.doc-delete:hover{background:#f7e5e2;color:var(--danger)}.library-empty{color:var(--muted);font-size:11px;padding:10px 2px}
+  .privacy-note{margin-top:13px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:10px;line-height:1.55}.privacy-note strong{color:var(--ink)}.clear-link{margin-top:8px;border:0;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;padding:3px 0;text-decoration:underline;text-underline-offset:3px}.clear-link:hover{color:var(--danger)}
+  .hero{padding:4px 0 26px;border-bottom:1px solid var(--line)}.eyebrow{color:var(--accent);font-size:11px;letter-spacing:.14em;font-weight:800;text-transform:uppercase}
+  h1{margin:12px 0;max-width:700px;font-family:Georgia,"Songti SC","SimSun",serif;font-weight:500;font-size:clamp(36px,4.2vw,62px);line-height:.98;letter-spacing:-.045em}h1 em{color:var(--accent);font-style:italic}
+  .hero-copy{max-width:645px;color:var(--muted);font-size:14px;margin:0}.hero-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:17px}.hero-badge{padding:5px 9px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);font-size:11px}.hero-badge span{color:var(--accent);margin-right:4px}
+  .example-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.example-chip{border:1px solid var(--line);border-radius:999px;padding:7px 11px;background:transparent;cursor:pointer;color:var(--muted);font-size:11px;transition:.16s ease}.example-chip:hover{border-color:var(--accent);color:var(--accent2);background:var(--accentSoft)}
+  .composer-wrap{margin-top:24px}.composer-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}.composer-label strong{font-size:13px}.composer-label span{color:var(--muted);font-size:10px}
+  .composer{border:1px solid var(--line2);border-radius:16px;background:#fff;padding:14px;box-shadow:0 8px 26px rgba(31,45,39,.05);transition:.18s}.composer:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(11,118,104,.09),0 12px 28px rgba(31,45,39,.06)}
+  textarea{width:100%;min-height:88px;border:0;outline:0;resize:vertical;background:transparent;color:var(--ink);font-size:15px;line-height:1.55}textarea::placeholder{color:#9aa39d}.composer-bottom{display:flex;align-items:center;gap:10px;margin-top:6px}.composer-hint{color:var(--muted);font-size:10px;flex:1}
+  .primary-btn{border:0;border-radius:11px;padding:10px 17px;background:var(--ink);color:#fff;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:.16s}.primary-btn:hover{background:var(--accent2);transform:translateY(-1px)}.primary-btn:disabled{opacity:.6;cursor:wait;transform:none}.primary-btn svg{width:14px;height:14px}
+  .result-card{display:none;margin-top:24px;border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden;animation:rise .26s ease both}@keyframes rise{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+  .result-head{padding:16px 18px 13px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}.status-badge{border-radius:999px;padding:4px 8px;font-size:10px;font-weight:800;letter-spacing:.02em;background:var(--surface2);color:var(--muted);border:1px solid var(--line)}.status-badge.strong{color:var(--accent2);background:var(--accentSoft);border-color:transparent}.status-badge.medium{color:var(--amber);background:var(--amberSoft);border-color:transparent}.status-badge.none{color:var(--danger);background:#fbecea;border-color:transparent}.query-hint{color:var(--muted);font-size:10px;margin-left:auto}
+  .result-body{padding:20px 18px 16px}.headline{font-family:Georgia,"Songti SC","SimSun",serif;font-size:22px;line-height:1.28;letter-spacing:-.02em;margin:0 0 14px}.answer-text{color:#35433c;font-size:13px;line-height:1.78;white-space:pre-wrap;word-break:break-word}.warning-box{display:none;margin:14px 0 0;border-radius:10px;background:var(--amberSoft);color:#7b500e;padding:10px 12px;font-size:11px}
+  .result-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:17px;padding-top:14px;border-top:1px solid var(--line)}.ghost-btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px;color:var(--muted);font-size:11px;cursor:pointer}.ghost-btn:hover{border-color:var(--line2);color:var(--ink);background:var(--surface2)}
+  .followups{margin-top:14px}.followups-label{color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.08em;margin-bottom:7px;text-transform:uppercase}.followup-row{display:flex;flex-wrap:wrap;gap:7px}.followup{border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 9px;font-size:10px;color:var(--muted);cursor:pointer}.followup:hover{color:var(--accent2);border-color:var(--accent)}
+  .evidence-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}.evidence-sub{color:var(--muted);font-size:10px;margin:0 0 13px}#evidenceList{display:grid;gap:9px}.evidence-placeholder{border:1px dashed var(--line2);border-radius:12px;padding:18px 14px;color:var(--muted);font-size:11px;line-height:1.65}
+  .evidence-card{border:1px solid var(--line);border-radius:12px;padding:12px;background:#fff}.evidence-card-top{display:flex;align-items:center;gap:7px;margin-bottom:8px}.cite-number{width:23px;height:23px;display:grid;place-items:center;border-radius:7px;background:var(--ink);color:#fff;font-size:10px;font-weight:800}.evidence-tag{color:var(--accent);background:var(--accentSoft);border-radius:999px;padding:2px 7px;font-size:9px;font-weight:700}.evidence-title{font-size:11px;font-weight:750;line-height:1.4;margin-bottom:3px}.evidence-meta{color:var(--muted);font-size:9px;margin-bottom:8px;word-break:break-word}
+  .evidence-quote{margin:0;padding:9px 10px;border-left:2px solid var(--accent);background:var(--surface2);color:#48554e;font-family:Georgia,"Songti SC",serif;font-size:11px;line-height:1.62;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}.source-btn{margin-top:9px;border:0;background:transparent;padding:0;color:var(--accent);font-size:10px;font-weight:700;cursor:pointer}.source-btn:hover{color:var(--accent2);text-decoration:underline;text-underline-offset:3px}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);opacity:0;pointer-events:none;z-index:50;background:var(--ink);color:#fff;border-radius:10px;padding:9px 13px;font-size:12px;box-shadow:0 12px 30px rgba(0,0,0,.2);transition:.2s ease;max-width:min(90vw,500px)}.toast.show{opacity:1;transform:translate(-50%,0)}
+  footer.page-foot{text-align:center;color:#929a94;font-size:10px;padding:0 20px 24px}
+  @media(max-width:1180px){.workspace{grid-template-columns:250px minmax(0,1fr)}.evidence-panel{grid-column:1/-1;position:static;max-height:none}#evidenceList{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  @media(max-width:780px){.topbar-inner{padding:12px 14px}.brand-sub,.top-link{display:none}.workspace{padding:12px;display:block}.library-panel,.evidence-panel{position:static;margin-bottom:12px}.main-panel{min-height:auto;padding:22px 16px}h1{font-size:42px}.doc-list{grid-template-columns:repeat(2,minmax(0,1fr))}#evidenceList{grid-template-columns:1fr}.query-hint{width:100%;margin-left:0}}
+  @media(max-width:520px){.trust-pill{display:none}.doc-list{grid-template-columns:1fr}.composer-hint{display:none}.primary-btn{margin-left:auto}}
 </style>
 </head>
 <body>
-  <h1>litrag</h1>
-  <div class="lead">把论文丢进来，问它问题，答案直接标出第几页。</div>
-  <div class="sub">不是聊天机器人——它只摘论文里的原话。资料里没有的，它直接说“没有”。</div>
-
-  <div class="panel">
-    <b>① 上传你的论文</b>（PDF，可多选，最多 10 篇）
-    <div class="row">
-      <input type="file" id="files" accept="application/pdf" multiple hidden>
-      <button class="file-btn" id="pick">选择 PDF 文件</button>
-      <button class="file-btn danger" id="clear" disabled>清空我的文献库</button>
-      <span id="status"></span>
-    </div>
-    <div class="docs" id="docs">正在读取你的文献库…</div>
-  </div>
-
-  <div class="examples">
-    <button class="chip">什么是 RAG？</button>
-    <button class="chip">What are the three stages of RAG?</button>
-    <button class="chip">What are reflection tokens in Self-RAG?</button>
-  </div>
-
-  <textarea id="q" placeholder="② 提问。英文论文用英文问效果最好"></textarea>
-  <button class="go" id="go">提问</button>
-
-  <div id="out">
-    <div class="answer" id="answer"></div>
-    <div class="warn" id="warn" style="display:none"></div>
-    <div class="cite" id="cite"></div>
-  </div>
-
-  <footer>
-    检索 BM25 · 回答为原文摘录 · 46 题开发集 Recall@1 84.8% · hold-out Recall@1 95.0% ·
-    <a href="https://github.com/Yul-pio/litrag">源码</a>
-  </footer>
-
-<script>
-function newSessionId() {
-  try {
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
-    return 's' + Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
-  } catch (_) {
-    return 's' + Math.random().toString(36).slice(2) + Date.now().toString(36);
-  }
-}
-
-const SESSION = (() => {
-  let s = localStorage.getItem('litrag_sid');
-  if (!s || s.length < 8) {
-    s = newSessionId();
-    localStorage.setItem('litrag_sid', s);
-  }
-  return s;
-})();
-
-const q = document.getElementById('q');
-const go = document.getElementById('go');
-const out = document.getElementById('out');
-const answerEl = document.getElementById('answer');
-const citeEl = document.getElementById('cite');
-const warnEl = document.getElementById('warn');
-const docsEl = document.getElementById('docs');
-const statusEl = document.getElementById('status');
-const fileInput = document.getElementById('files');
-const pick = document.getElementById('pick');
-const clearBtn = document.getElementById('clear');
-
-function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, ch => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[ch]);
-}
-
-async function loadDocs() {
-  try {
-    const res = await fetch('/api/docs', { headers: {'X-Session': SESSION} });
-    const data = await res.json();
-    if (!data.docs || data.docs.length === 0) {
-      docsEl.textContent = '还没有上传——当前使用演示库（5 篇 RAG 论文）。';
-      clearBtn.disabled = true;
-    } else {
-      docsEl.textContent = `你的文献库（${data.docs.length} 篇）：` +
-        data.docs.map(d => `${d.filename}（${d.chunks} 块）`).join('、');
-      clearBtn.disabled = false;
-    }
-  } catch (e) {
-    docsEl.textContent = '读取文献库失败：' + e;
-  }
-}
-
-async function uploadFiles(files) {
-  for (const file of files) {
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      statusEl.textContent = `${file.name} 不是 PDF，已跳过`;
-      continue;
-    }
-    statusEl.textContent = `上传中：${file.name}…`;
-    try {
-      const res = await fetch('/api/upload?name=' + encodeURIComponent(file.name), {
-        method: 'POST',
-        headers: {'X-Session': SESSION, 'Content-Type': 'application/pdf'},
-        body: file
-      });
-      const data = await res.json();
-      if (data.error) {
-        statusEl.textContent = `${file.name} 失败：${data.error}`;
-      } else {
-        statusEl.textContent = `${file.name} 完成：${data.chars} 字，${data.chunks} 块`;
-      }
-    } catch (e) {
-      statusEl.textContent = `${file.name} 上传失败：` + e;
-    }
-  }
-  loadDocs();
-}
-
-async function ask() {
-  const question = q.value.trim();
-  if (!question) return;
-  go.disabled = true; go.textContent = '检索中…';
-  try {
-    const res = await fetch('/api/ask', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-Session': SESSION},
-      body: JSON.stringify({question})
-    });
-    const data = await res.json();
-    if (data.error) {
-      answerEl.textContent = '出错了：' + data.error;
-    } else {
-      answerEl.textContent = data.answer;
-      citeEl.innerHTML = (data.citations || []).map(c => {
-        const pageText = (c.page && c.section !== `第 ${c.page} 页`) ? `，PDF 第 ${c.page} 页` : '';
-        const open = c.page
-          ? `<br><button class="cite-link" data-doc="${escapeHtml(c.doc)}" ` +
-            `data-page="${Number(c.page)}">打开原文第 ${Number(c.page)} 页</button>`
-          : '';
-        return `<div class="cite-item"><b>[${c.id}]</b> ${escapeHtml(c.doc)} / ` +
-               `${escapeHtml(c.section)}${pageText}<br>「${escapeHtml(c.quote)}」${open}</div>`;
-      }).join('');
-      warnEl.style.display = data.warning ? 'block' : 'none';
-      warnEl.textContent = data.warning || '';
-    }
-    out.style.display = 'block';
-  } catch (err) {
-    answerEl.textContent = '请求失败：' + err;
-    out.style.display = 'block';
-  } finally {
-    go.disabled = false; go.textContent = '提问';
-  }
-}
-
-async function openCitation(docId, page) {
-  const win = window.open('', '_blank');
-  if (win) {
-    win.document.write('<p style="font-family:sans-serif">正在加载 PDF…</p>');
-  }
-  try {
-    const res = await fetch('/api/file?doc=' + encodeURIComponent(docId), {
-      headers: {'X-Session': SESSION}
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.error || `HTTP ${res.status}`);
-    }
-    const blob = await res.blob();
-    const baseUrl = URL.createObjectURL(blob);
-    const url = baseUrl + (page ? `#page=${page}` : '');
-    if (win) win.location.replace(url);
-    else window.open(url, '_blank', 'noopener');
-    setTimeout(() => URL.revokeObjectURL(baseUrl), 60000);
-  } catch (err) {
-    if (win) win.close();
-    alert('打开 PDF 失败：' + err.message);
-  }
-}
-
-async function clearLibrary() {
-  if (!confirm('确定清空当前浏览器会话上传的文献吗？清空后会回到演示库。')) return;
-  clearBtn.disabled = true;
-  try {
-    const res = await fetch('/api/session', {
-      method: 'DELETE',
-      headers: {'X-Session': SESSION}
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
-    statusEl.textContent = '文献库已清空，当前使用演示库。';
-    answerEl.textContent = '';
-    citeEl.innerHTML = '';
-    warnEl.style.display = 'none';
-    out.style.display = 'none';
-    loadDocs();
-  } catch (err) {
-    statusEl.textContent = '清空失败：' + err.message;
-    clearBtn.disabled = false;
-  }
-}
-
-pick.addEventListener('click', () => fileInput.click());
-clearBtn.addEventListener('click', clearLibrary);
-citeEl.addEventListener('click', event => {
-  const button = event.target.closest('button[data-doc]');
-  if (!button) return;
-  openCitation(button.dataset.doc, Number(button.dataset.page));
-});
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length) uploadFiles(fileInput.files);
-  fileInput.value = '';
-});
-
-document.querySelectorAll('.chip').forEach(chip => {
-  chip.addEventListener('click', () => {
-    q.value = chip.textContent;
-    ask();
-  });
-});
-
-go.addEventListener('click', ask);
-q.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') ask();
-});
-
-loadDocs();
+<header class="topbar"><div class="topbar-inner">
+  <a class="brand" href="#"><span class="brand-mark">li</span><span class="brand-name">litrag</span><span class="brand-sub">evidence workbench</span></a>
+  <span class="top-spacer"></span><span class="trust-pill"><span class="trust-dot"></span>会话隔离 · 原文可核验</span><a class="top-link" href="https://github.com/Yul-pio/litrag" target="_blank" rel="noopener">GitHub ↗</a>
+</div></header>
+<main class="workspace">
+  <aside class="panel library-panel" aria-label="文献库">
+    <div class="panel-title-row"><div><div class="panel-kicker">Library</div><div class="panel-title">文献库</div></div><span class="count-badge" id="docCount">读取中</span></div>
+    <input type="file" id="files" accept="application/pdf" multiple hidden>
+    <button class="dropzone" id="dropzone" type="button"><div class="dropzone-icon">＋</div><div class="dropzone-title">添加论文 PDF</div><div class="dropzone-note">点击或拖入，最多 10 篇 · 单篇 8MB</div></button>
+    <div class="library-mode"><span id="libraryMode">正在读取文献库…</span><span id="uploadStatus"></span></div>
+    <div class="doc-list" id="docList"></div>
+    <div class="privacy-note"><strong>隐私提示</strong><br>上传文件与索引保存在当前会话，<span id="retentionText">24 小时</span>后自动清理。请勿上传未公开或涉密论文。<button class="clear-link" id="clearAll" type="button" hidden>清空我的文献库</button></div>
+  </aside>
+  <section class="panel main-panel" aria-label="提问工作台">
+    <section class="hero"><div class="eyebrow">Literature evidence workbench</div><h1>中文提问，<br><em>原文作答。</em></h1><p class="hero-copy">从论文中找出真正支持结论的原文，标出页码。没有证据时明确拒答，不替模型猜。</p><div class="hero-badges"><span class="hero-badge"><span>✓</span>中文问英文论文</span><span class="hero-badge"><span>✓</span>每条结论带证据</span><span class="hero-badge"><span>✓</span>证据不足会拒答</span></div>
+      <div class="example-row" id="examples"><button class="example-chip" data-question="RAG 的三个阶段是什么？">RAG 的三个阶段是什么？</button><button class="example-chip" data-question="Self-RAG 如何决定什么时候检索？">Self-RAG 如何决定检索？</button><button class="example-chip" data-question="长上下文模型为什么中间信息效果差？">长上下文为什么中间效果差？</button></div>
+    </section>
+    <div class="composer-wrap"><div class="composer-label"><strong>向文献提问</strong><span>中文可以直接问英文论文</span></div><div class="composer" id="composer"><textarea id="q" placeholder="例如：Self-RAG 如何决定什么时候检索？"></textarea><div class="composer-bottom"><span class="composer-hint">Ctrl / ⌘ + Enter 发送 · 回答只基于当前文献库</span><button class="primary-btn" id="askBtn" type="button"><span id="askLabel">检索证据</span><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div></div></div>
+    <article class="result-card" id="resultCard" aria-live="polite"><div class="result-head"><span class="status-badge" id="modeBadge">原文摘录</span><span class="status-badge" id="strengthBadge">证据核验中</span><span class="query-hint" id="queryHint"></span></div><div class="result-body"><h2 class="headline" id="headline"></h2><div class="answer-text" id="answerText"></div><div class="warning-box" id="warningBox"></div><div class="result-actions"><button class="ghost-btn" id="copyBtn" type="button">复制回答</button><button class="ghost-btn" id="exportBtn" type="button">导出证据单 .md</button></div><div class="followups" id="followups"><div class="followups-label">继续追问</div><div class="followup-row" id="followupRow"></div></div></div></article>
+  </section>
+  <aside class="panel evidence-panel" aria-label="证据面板"><div class="evidence-head"><div><div class="panel-kicker">Evidence</div><div class="panel-title">证据面板</div></div><span class="count-badge" id="evidenceCount">0 条</span></div><p class="evidence-sub">每条回答对应可点击的原文位置，方便核验。</p><div id="evidencePlaceholder" class="evidence-placeholder">提问后，这里会出现原文证据、页码和快速定位按钮。</div><div id="evidenceList"></div></aside>
+</main>
+<footer class="page-foot">litrag · 检索 BM25 + 中文查询扩展 · 会话数据自动清理 · 回答可回溯到原文页码</footer>
+<div class="toast" id="toast" role="status"></div>
+<script>function newSessionId(){try{const b=new Uint8Array(16);crypto.getRandomValues(b);return's'+Array.from(b,x=>x.toString(16).padStart(2,'0')).join('')}catch(_){return's'+Math.random().toString(36).slice(2)+Date.now().toString(36)}}
+const SESSION=(()=>{let v=localStorage.getItem('litrag_sid');if(!v||v.length<8){v=newSessionId();localStorage.setItem('litrag_sid',v)}return v})();
+const $=id=>document.getElementById(id), q=$('q'), askBtn=$('askBtn'), askLabel=$('askLabel'), fileInput=$('files'), dropzone=$('dropzone'), docList=$('docList'), docCount=$('docCount'), libraryMode=$('libraryMode'), uploadStatus=$('uploadStatus'), retentionText=$('retentionText'), clearAllBtn=$('clearAll'), resultCard=$('resultCard'), headlineEl=$('headline'), answerText=$('answerText'), warningBox=$('warningBox'), evidenceList=$('evidenceList'), evidencePlaceholder=$('evidencePlaceholder'), evidenceCount=$('evidenceCount'), queryHint=$('queryHint'), modeBadge=$('modeBadge'), strengthBadge=$('strengthBadge'), followupRow=$('followupRow'), copyBtn=$('copyBtn'), exportBtn=$('exportBtn'), toastEl=$('toast');
+let lastResult=null,toastTimer=null;
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function truncate(v,n){const s=String(v??'');return s.length>n?s.slice(0,n).trimEnd()+'…':s}
+function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toastEl.classList.remove('show'),2800)}
+async function loadLibrary(){try{const r=await fetch('/api/docs',{headers:{'X-Session':SESSION}}),d=await r.json();if(!r.ok||d.error)throw new Error(d.error||`HTTP ${r.status}`);renderLibrary(d)}catch(e){docCount.textContent='读取失败';libraryMode.textContent='文献库暂时不可用';docList.innerHTML=`<div class="library-empty">读取失败：${escapeHtml(e.message)}</div>`}}
+function renderLibrary(data){const docs=Array.isArray(data.docs)?data.docs:[],demo=Array.isArray(data.demo_docs)?data.demo_docs:[],own=data.source==='user'&&docs.length>0,visible=own?docs:demo;retentionText.textContent=`${Number(data.retention_hours||24)} 小时`;docCount.textContent=own?`${docs.length} 篇`:`${demo.length} 篇演示`;libraryMode.textContent=own?'我的文献库':'当前使用演示库';clearAllBtn.hidden=!own;if(!visible.length){docList.innerHTML='<div class="library-empty">还没有文献。上传 PDF 后即可开始。</div>';return}docList.innerHTML=visible.map(doc=>{const title=truncate(doc.title||doc.filename||doc.doc_id,68),meta=[];if(doc.pages)meta.push(`${doc.pages} 页`);if(doc.chars)meta.push(`${Math.round(doc.chars/1000)}k 字`);if(doc.chunks)meta.push(`${doc.chunks} 块`);const badge=own?`<span class="doc-badge ${doc.quality==='review'?'review':''}">${doc.quality==='review'?'建议核对':'已解析'}</span>`:'<span class="doc-badge">演示</span>',remove=own?`<button class="doc-delete" type="button" title="删除这篇文献" data-doc="${escapeHtml(doc.doc_id)}">×</button>`:'';return`<article class="doc-card ${own?'':'demo'}"><div class="doc-card-top"><div class="doc-icon">PDF</div><div class="doc-main"><div class="doc-name" title="${escapeHtml(doc.title||doc.filename||doc.doc_id)}">${escapeHtml(title)}</div><div class="doc-meta">${meta.map(escapeHtml).join(' · ')} ${badge}</div></div>${remove}</div></article>`}).join('')}
+async function uploadFiles(files){const pdfs=Array.from(files).filter(f=>f.name.toLowerCase().endsWith('.pdf'));if(!pdfs.length)return toast('请选择 PDF 文件');for(const file of pdfs){uploadStatus.textContent=`上传 ${file.name}…`;try{const r=await fetch('/api/upload?name='+encodeURIComponent(file.name),{method:'POST',headers:{'X-Session':SESSION,'Content-Type':'application/pdf'},body:file}),d=await r.json();if(!r.ok||d.error)throw new Error(d.error||`HTTP ${r.status}`);uploadStatus.textContent=`${d.pages||0} 页 · ${d.chunks||0} 块`}catch(e){uploadStatus.textContent='上传失败';toast(`${file.name}：${e.message}`)}}await loadLibrary()}
+function setLoading(on){askBtn.disabled=on;askLabel.textContent=on?'检索证据中…':'检索证据';q.disabled=on}
+function strengthInfo(v){if(v==='strong')return['strong','证据充分'];if(v==='medium')return['medium','建议核对原文'];if(v==='none')return['none','证据不足'];return['','证据核验']}
+function renderResult(data,question){lastResult={...data,question};const[sc,st]=strengthInfo(data.evidence_strength);modeBadge.textContent=data.mode==='none'?'已拒答':(data.mode==='llm'?'模型综合':'原文摘录');strengthBadge.className=`status-badge ${sc}`;strengthBadge.textContent=st;queryHint.textContent=data.query_expanded?'已自动补充英文检索词':'';headlineEl.textContent=data.headline||'回答结果';answerText.textContent=data.answer||'';warningBox.style.display=data.warning?'block':'none';warningBox.textContent=data.warning||'';const suggestions=data.suggestions||[];followupRow.innerHTML=suggestions.map(t=>`<button class="followup" type="button" data-question="${escapeHtml(t)}">${escapeHtml(t)}</button>`).join('');$('followups').style.display=suggestions.length?'block':'none';const cs=data.citations||[];evidenceCount.textContent=`${cs.length} 条`;evidencePlaceholder.style.display=cs.length?'none':'block';evidencePlaceholder.textContent=cs.length?'':(data.mode==='none'?'没有可用证据。系统已经停止回答，不展示推测内容。':'这次回答没有生成可定位的原文证据，请换一种问法。');evidenceList.innerHTML=cs.map(c=>{const page=c.page?`第 ${Number(c.page)} 页`:(c.section||'原文片段'),btn=c.page?`<button class="source-btn" type="button" data-doc="${escapeHtml(c.doc)}" data-page="${Number(c.page)}">定位到原文 ${escapeHtml(page)} ↗</button>`:'';return`<article class="evidence-card"><div class="evidence-card-top"><span class="cite-number">[${Number(c.id)}]</span><span class="evidence-tag">原文证据</span></div><div class="evidence-title">${escapeHtml(truncate(c.title||c.doc,90))}</div><div class="evidence-meta">${escapeHtml(c.doc)} · ${escapeHtml(page)}</div><blockquote class="evidence-quote">「${escapeHtml(c.quote||'')}」</blockquote>${btn}</article>`}).join('');resultCard.style.display='block'}
+async function ask(questionOverride){const question=String(questionOverride??q.value).trim();if(!question){q.focus();return toast('先写一个问题')}q.value=question;setLoading(true);resultCard.style.display='block';headlineEl.textContent='正在检索原文…';answerText.textContent='系统正在查找与问题最相关的段落，并核对证据。';warningBox.style.display='none';evidencePlaceholder.style.display='block';evidencePlaceholder.textContent='正在收集原文证据…';evidenceList.innerHTML='';evidenceCount.textContent='检索中';queryHint.textContent='';modeBadge.textContent='检索中';strengthBadge.className='status-badge';strengthBadge.textContent='请稍候';try{const r=await fetch('/api/ask',{method:'POST',headers:{'Content-Type':'application/json','X-Session':SESSION},body:JSON.stringify({question})}),d=await r.json();if(!r.ok||d.error)throw new Error(d.error||`HTTP ${r.status}`);renderResult(d,question);if(window.matchMedia('(max-width:780px)').matches)resultCard.scrollIntoView({behavior:'smooth',block:'start'})}catch(e){headlineEl.textContent='请求失败';answerText.textContent=e.message;evidenceCount.textContent='0 条';toast('提问失败，请稍后再试')}finally{setLoading(false)}}
+async function openCitation(docId,page){try{const r=await fetch('/api/file?doc='+encodeURIComponent(docId),{headers:{'X-Session':SESSION}});if(!r.ok){const d=await r.json().catch(()=>({}));throw new Error(d.error||`HTTP ${r.status}`)}const blob=await r.blob(),url=URL.createObjectURL(blob)+(page?`#page=${Number(page)}`:'');window.open(url,'_blank','noopener');setTimeout(()=>URL.revokeObjectURL(url),60000)}catch(e){toast(`打开原文失败：${e.message}`)}}
+function markdownForResult(){if(!lastResult)return'';const lines=['# litrag 文献证据单','',`> 问题：${lastResult.question}`,'','## 结论','',lastResult.headline||'','',lastResult.answer||'',''];if(lastResult.warning)lines.push(`> 注意：${lastResult.warning}`,'');const cs=lastResult.citations||[];if(cs.length){lines.push('## 原文证据','');cs.forEach(c=>{const page=c.page?`第 ${c.page} 页`:(c.section||'');lines.push(`### [${c.id}] ${c.title||c.doc}`,'',`${c.doc} · ${page}`,'',`> ${c.quote||''}`,'')})}lines.push('---',`导出时间：${new Date().toLocaleString('zh-CN')}`);return lines.join('\n')}
+function downloadMarkdown(){const text=markdownForResult();if(!text)return toast('先完成一次提问');const blob=new Blob([text],{type:'text/markdown;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`litrag-evidence-${new Date().toISOString().slice(0,10)}.md`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);toast('证据单已导出')}
+async function copyAnswer(){if(!lastResult)return toast('先完成一次提问');const text=markdownForResult();try{await navigator.clipboard.writeText(text);toast('回答与证据已复制')}catch(_){const area=document.createElement('textarea');area.value=text;document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();toast('回答与证据已复制')}}
+async function clearLibrary(){if(!confirm('确定清空当前会话上传的文献吗？清空后会回到演示库。'))return;try{const r=await fetch('/api/session',{method:'DELETE',headers:{'X-Session':SESSION}}),d=await r.json();if(!r.ok||d.error)throw new Error(d.error||`HTTP ${r.status}`);resultCard.style.display='none';lastResult=null;evidenceCount.textContent='0 条';evidencePlaceholder.style.display='block';evidencePlaceholder.textContent='提问后，这里会出现原文证据、页码和快速定位按钮。';evidenceList.innerHTML='';await loadLibrary();toast('已清空，当前使用演示库')}catch(e){toast(`清空失败：${e.message}`)}}
+async function deleteDocument(docId){if(!confirm('确定删除这篇文献吗？删除后需要重新上传。'))return;try{const r=await fetch('/api/doc?doc='+encodeURIComponent(docId),{method:'DELETE',headers:{'X-Session':SESSION}}),d=await r.json();if(!r.ok||d.error)throw new Error(d.error||`HTTP ${r.status}`);await loadLibrary();toast('文献已删除')}catch(e){toast(`删除失败：${e.message}`)}}
+dropzone.addEventListener('click',()=>fileInput.click());fileInput.addEventListener('change',()=>{if(fileInput.files.length)uploadFiles(fileInput.files);fileInput.value=''});['dragenter','dragover'].forEach(t=>dropzone.addEventListener(t,e=>{e.preventDefault();dropzone.classList.add('dragging')}));['dragleave','drop'].forEach(t=>dropzone.addEventListener(t,e=>{e.preventDefault();dropzone.classList.remove('dragging')}));dropzone.addEventListener('drop',e=>{if(e.dataTransfer.files.length)uploadFiles(e.dataTransfer.files)});
+$('examples').addEventListener('click',e=>{const b=e.target.closest('[data-question]');if(b)ask(b.dataset.question)});followupRow.addEventListener('click',e=>{const b=e.target.closest('[data-question]');if(b)ask(b.dataset.question)});evidenceList.addEventListener('click',e=>{const b=e.target.closest('button[data-doc]');if(b)openCitation(b.dataset.doc,Number(b.dataset.page))});docList.addEventListener('click',e=>{const b=e.target.closest('button[data-doc]');if(b)deleteDocument(b.dataset.doc)});askBtn.addEventListener('click',()=>ask());q.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();ask()}});copyBtn.addEventListener('click',copyAnswer);exportBtn.addEventListener('click',downloadMarkdown);clearAllBtn.addEventListener('click',clearLibrary);loadLibrary();
 </script>
 </body>
 </html>

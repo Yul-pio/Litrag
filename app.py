@@ -88,6 +88,9 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/session":
                 self._json(200, service.clear_session(self.session))
+            if path == "/api/doc":
+                doc_id = (parse_qs(urlparse(self.path).query).get("doc") or [""])[0]
+                self._json(200, service.delete_document(self.session, doc_id))
                 return
             self._send(404, b"not found", "text/plain; charset=utf-8")
         except ValueError as exc:

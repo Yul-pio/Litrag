@@ -36,6 +36,7 @@ from litrag.evaluate import (
     run_refusal_eval,
 )
 from litrag.loader import load_dir
+from litrag.query import build_query_plan
 from litrag.retriever import Retriever
 
 DEFAULT_INDEX = ROOT / ".index" / "index.json"
@@ -80,7 +81,13 @@ def cmd_ask(args: argparse.Namespace) -> None:
         page = _page_suffix(hit.chunk.section, hit.chunk.page)
         print(f"  [{i}] {hit.chunk.doc_id} / {hit.chunk.section}{page}  分数={hit.score:.2f}")
 
-    result = answer(args.question, hits, use_llm=not args.no_llm)
+    plan = build_query_plan(args.question)
+    result = answer(
+        args.question,
+        hits,
+        use_llm=not args.no_llm,
+        retrieval_query=plan.expanded,
+    )
 
     print(f"\n回答（模式：{result.mode}）：\n")
     print(result.text)
