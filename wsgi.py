@@ -23,9 +23,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from litrag import service  # noqa: E402
-
-PAGE_FILE = ROOT / "web" / "index.html"
-PAGE = PAGE_FILE.read_text(encoding="utf-8") if PAGE_FILE.exists() else "<h1>litrag</h1>"
+from litrag.page import get_page  # noqa: E402
 
 
 def _respond(start_response, status: str, body: bytes, content_type: str, headers=None):
@@ -53,7 +51,7 @@ def application(environ, start_response):
     sid = environ.get("HTTP_X_SESSION", "")
 
     if method == "GET" and path in ("/", "/index.html"):
-        return _respond(start_response, "200 OK", PAGE.encode("utf-8"),
+        return _respond(start_response, "200 OK", get_page().encode("utf-8"),
                         "text/html; charset=utf-8")
 
     try:

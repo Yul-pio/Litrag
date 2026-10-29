@@ -24,9 +24,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from litrag import service  # noqa: E402
-
-PAGE_FILE = ROOT / "web" / "index.html"
-PAGE = PAGE_FILE.read_text(encoding="utf-8") if PAGE_FILE.exists() else "<h1>litrag</h1>"
+from litrag.page import get_page  # noqa: E402
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -57,7 +55,7 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         if path in ("/", "/index.html"):
-            self._send(200, PAGE.encode("utf-8"), "text/html; charset=utf-8")
+            self._send(200, get_page().encode("utf-8"), "text/html; charset=utf-8")
             return
         if path == "/api/docs":
             self._json(200, service.list_documents(self.session))
