@@ -66,6 +66,47 @@ def draft_review(candidate: dict) -> dict:
     college = candidate.get("college", "")
     year = candidate.get("year")
     now = datetime.now().astimezone()
+    program = {
+        "id": f"{candidate_id}-program",
+        "school_id": school_id,
+        "college": college,
+        "year": year,
+        "major_code": "",
+        "major_name": "",
+        "degree_type": "",
+        "study_mode": "",
+        "direction_code": "",
+        "direction_name": "",
+        "plan": None,
+        "recommendation_quota": None,
+        "program_total_plan": None,
+        "program_total_recommendation": None,
+        "exam_subjects": [],
+        "notes_label": "专业备注",
+        "notes": "",
+        "verified_at": None,
+    }
+    candidate_program = candidate.get("program")
+    if isinstance(candidate_program, dict):
+        for field in (
+            "id",
+            "major_code",
+            "major_name",
+            "degree_type",
+            "study_mode",
+            "direction_code",
+            "direction_name",
+            "plan",
+            "recommendation_quota",
+            "program_total_plan",
+            "program_total_recommendation",
+            "exam_subjects",
+            "notes_label",
+            "notes",
+        ):
+            if field in candidate_program:
+                program[field] = candidate_program[field]
+
     return {
         "candidate_id": candidate_id,
         "id": candidate_id,
@@ -92,26 +133,7 @@ def draft_review(candidate: dict) -> dict:
         "read_minutes": 4,
         "feed_date": now.strftime("%Y-%m-%d"),
         "feed_time": now.strftime("%H:%M"),
-        "program": {
-            "id": f"{candidate_id}-program",
-            "school_id": school_id,
-            "college": college,
-            "year": year,
-            "major_code": "",
-            "major_name": "",
-            "degree_type": "",
-            "study_mode": "",
-            "direction_code": "",
-            "direction_name": "",
-            "plan": None,
-            "recommendation_quota": None,
-            "program_total_plan": None,
-            "program_total_recommendation": None,
-            "exam_subjects": [],
-            "notes_label": "专业备注",
-            "notes": "",
-            "verified_at": None,
-        },
+        "program": program,
     }
 
 

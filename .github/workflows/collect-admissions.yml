@@ -1,0 +1,51 @@
+name: Collect admission catalog candidates
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  pku:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect PKU candidates
+        run: |
+          python scripts/collect_candidates.py \
+            --school pku \
+            --year 2027 \
+            --output data/candidates/pku_2027_catalog.json
+      - name: Upload PKU candidates for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: pku-2027-catalog-candidates
+          path: data/candidates/pku_2027_catalog.json
+          if-no-files-found: error
+
+  tsinghua:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Collect Tsinghua CS candidates
+        run: |
+          python scripts/collect_candidates.py \
+            --school tsinghua \
+            --year 2027 \
+            --college 计算机科学与技术系 \
+            --output data/candidates/tsinghua_2027_catalog.json
+      - name: Upload Tsinghua candidates for review
+        uses: actions/upload-artifact@v4
+        with:
+          name: tsinghua-2027-catalog-candidates
+          path: data/candidates/tsinghua_2027_catalog.json
+          if-no-files-found: error

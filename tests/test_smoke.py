@@ -24,6 +24,7 @@ from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
 from litrag import service
 from scripts.collectors.pku import collect_pku_catalog
+from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import build_records, draft_review, validate_review
 from litrag.retriever import Retriever
 
@@ -103,6 +104,49 @@ class TestCollectors(unittest.TestCase):
         self.assertEqual(item["source_id"], "pku-grad")
         self.assertEqual(item["college"], "软件与微电子学院")
         self.assertTrue(item["source_url"].endswith("zsml_ss_yx_00017.pdf"))
+
+    def test_tsinghua_html_catalog_becomes_review_candidates(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        result = collect_tsinghua_catalog(
+            year=2027,
+            html=html,
+            college_filter="计算机科学与技术系",
+            fetched_at="2026-11-01T00:00:00+00:00",
+        )
+        self.assertEqual(result["count"], 2)
+        by_direction = {
+            item["program"]["direction_code"]: item for item in result["items"]
+        }
+        item = by_direction["01"]
+        self.assertEqual(item["status"], "candidate")
+        self.assertEqual(item["source_id"], "tsinghua-grad")
+        self.assertEqual(item["source_kind"], "HTML 招生目录")
+        self.assertEqual(item["program"]["major_code"], "085400")
+        self.assertEqual(item["program"]["plan"], 13)
+        self.assertEqual(
+            item["program"]["exam_subjects"],
+            [
+                "101 思想政治理论",
+                "201 英语（一）",
+                "301 数学（一）",
+                "408 计算机学科专业基础",
+            ],
+        )
+        self.assertEqual(
+            by_direction["03"]["program"]["exam_subjects"],
+            item["program"]["exam_subjects"],
+        )
+        self.assertIn("强军计划", by_direction["03"]["raw"]["notes"])
+
+        review = draft_review(item)
+        self.assertEqual(review["status"], "draft")
+        self.assertEqual(review["program"]["major_code"], "085400")
+        self.assertEqual(review["program"]["direction_code"], "01")
+
+    def test_tsinghua_year_mismatch_is_rejected(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "页面年份 2027"):
+            collect_tsinghua_catalog(year=2028, html=html)
 
 
 class TestCandidatePromotion(unittest.TestCase):

@@ -4,6 +4,8 @@
     python scripts/collect_candidates.py --school pku --year 2027
     python scripts/collect_candidates.py --school pku --year 2027 --college 软件与微电子学院
     python scripts/collect_candidates.py --school pku --html tests/fixtures/pku_2027_catalog.html
+    python scripts/collect_candidates.py --school tsinghua --year 2027 --college 计算机科学与技术系
+    python scripts/collect_candidates.py --school tsinghua --year 2027 --html tests/fixtures/tsinghua_2027_cs_catalog.html
 
 采集器只写 data/candidates/，不修改正式 data/*.json。
 """
@@ -20,8 +22,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from scripts.collectors.pku import collect_pku_catalog  # noqa: E402
+from scripts.collectors.tsinghua import collect_tsinghua_catalog  # noqa: E402
 
-COLLECTORS = {"pku": collect_pku_catalog}
+COLLECTORS = {
+    "pku": collect_pku_catalog,
+    "tsinghua": collect_tsinghua_catalog,
+}
 
 
 def main() -> int:
@@ -36,7 +42,11 @@ def main() -> int:
 
     html = args.html.read_text(encoding="utf-8") if args.html else None
     collector = COLLECTORS[args.school]
-    result = collector(year=args.year, html=html, college_filter=args.college)
+    try:
+        result = collector(year=args.year, html=html, college_filter=args.college)
+    except (OSError, ValueError) as exc:
+        print(f"采集失败：{exc}", file=sys.stderr)
+        return 1
 
     output = args.output or ROOT / "data" / "candidates" / f"{args.school}_{args.year}_catalog.json"
     output = output if output.is_absolute() else ROOT / output

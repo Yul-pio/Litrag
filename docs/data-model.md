@@ -224,14 +224,26 @@ python scripts/validate_content.py
 每日采集工作流只生成候选 artifact，不自动提交或发布。
 
 ```text
-.github/workflows/collect-pku.yml
+.github/workflows/collect-admissions.yml
         ↓
-python scripts/collect_candidates.py --school pku --year 2027
+北大：官方 PDF 招生目录链接
+清华：官方 HTML 招生目录表格
         ↓
 data/candidates/pku_2027_catalog.json
+data/candidates/tsinghua_2027_catalog.json
         ↓
 人工审核
 ```
+
+当前工作流并行运行两个独立 job：
+
+```text
+python scripts/collect_candidates.py --school pku --year 2027
+python scripts/collect_candidates.py --school tsinghua --year 2027 --college 计算机科学与技术系
+```
+
+清华采集器会从 HTML 表格中解析院系、专业、方向、计划数、考试科目和招生说明，
+按研究方向生成候选；跨行合并的考试科目也会继承到对应方向。
 
 ## 审核转换工具
 
@@ -243,9 +255,10 @@ python scripts/promote_candidate.py draft `
   --candidate-id pku-2027-catalog-4251f989
 ```
 
-审核单会生成在候选文件旁边，状态为 `draft`。
+审核单会生成在候选文件旁边，状态为 `draft`。候选自带的专业代码、方向、
+计划数和考试科目会预填到审核单中，但仍需人工核对来源和关键数字。
 
-人工补齐以下字段后才能发布：
+人工核对并补齐以下字段后才能发布：
 
 - 专业代码、专业名称；
 - 学位类型、学习方式；
