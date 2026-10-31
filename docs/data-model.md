@@ -233,3 +233,45 @@ data/candidates/pku_2027_catalog.json
 人工审核
 ```
 
+## 审核转换工具
+
+从候选生成审核单：
+
+```powershell
+python scripts/promote_candidate.py draft `
+  --candidate-file data/candidates/pku_2027_catalog.json `
+  --candidate-id pku-2027-catalog-4251f989
+```
+
+审核单会生成在候选文件旁边，状态为 `draft`。
+
+人工补齐以下字段后才能发布：
+
+- 专业代码、专业名称；
+- 学位类型、学习方式；
+- 方向代码、方向名称；
+- 计划数、推免数；
+- 初试科目；
+- 摘要、推荐理由、本科生怎么用；
+- 核验时间。
+
+应用审核单：
+
+```powershell
+python scripts/promote_candidate.py apply `
+  --candidate-file data/candidates/pku_2027_catalog.json `
+  --review data/candidates/pku-2027-catalog-4251f989.review.json
+```
+
+确认覆盖已有同 ID 记录时才使用：
+
+```powershell
+python scripts/promote_candidate.py apply ... --update
+```
+
+随后运行：
+
+```powershell
+python scripts/validate_content.py
+```
+

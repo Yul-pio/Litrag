@@ -63,6 +63,7 @@ python app.py            # http://127.0.0.1:8000
 python -m unittest discover -s tests -v
 python scripts/validate_content.py
 python scripts/collect_candidates.py --school pku --year 2027 --college 软件与微电子学院
+python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2027_catalog.json --candidate-id <candidate_id>
 ```
 
 ### 处理你自己的 PDF

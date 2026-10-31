@@ -24,6 +24,7 @@ from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
 from litrag import service
 from scripts.collectors.pku import collect_pku_catalog
+from scripts.promote_candidate import build_records, draft_review, validate_review
 from litrag.retriever import Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -102,6 +103,45 @@ class TestCollectors(unittest.TestCase):
         self.assertEqual(item["source_id"], "pku-grad")
         self.assertEqual(item["college"], "软件与微电子学院")
         self.assertTrue(item["source_url"].endswith("zsml_ss_yx_00017.pdf"))
+
+
+class TestCandidatePromotion(unittest.TestCase):
+    def test_candidate_can_be_promoted_after_review(self):
+        html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        candidate = collect_pku_catalog(year=2027, html=html, college_filter="软件与微电子学院")["items"][0]
+        review = draft_review(candidate)
+        review.update({
+            "status": "verified",
+            "verified_at": "2026-10-31",
+            "summary": "测试摘要",
+            "why": "测试推荐理由",
+            "undergrad": "测试使用方式",
+            "audiences": ["大四"],
+            "feed_date": "2026-10-31",
+            "feed_time": "12:00",
+        })
+        review["program"].update({
+            "major_code": "085400",
+            "major_name": "电子信息",
+            "degree_type": "专硕",
+            "study_mode": "全日制",
+            "direction_code": "01",
+            "direction_name": "软件工程",
+            "exam_subjects": ["101 思想政治理论"],
+        })
+        validate_review(review, candidate)
+        program, admission = build_records(review)
+        self.assertEqual(program["major_code"], "085400")
+        self.assertEqual(admission["program_ids"], [program["id"]])
+        self.assertEqual(admission["source_url"], candidate["source_url"])
+
+    def test_source_url_mismatch_is_rejected(self):
+        html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        candidate = collect_pku_catalog(year=2027, html=html, college_filter="软件与微电子学院")["items"][0]
+        review = draft_review(candidate)
+        review["source_url"] = "https://example.com/wrong.pdf"
+        with self.assertRaises(ValueError):
+            validate_review(review, candidate)
 
 
 class TestRadar(unittest.TestCase):
