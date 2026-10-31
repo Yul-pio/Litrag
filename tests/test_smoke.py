@@ -172,8 +172,8 @@ class TestRadar(unittest.TestCase):
         programs = service.list_programs()
         records = service.list_admission_records()
         self.assertGreaterEqual(sources["count"], 10)
-        self.assertEqual(programs["count"], 2)
-        self.assertEqual(records["count"], 2)
+        self.assertEqual(programs["count"], 3)
+        self.assertEqual(records["count"], 3)
         self.assertTrue(all(item.get("source_url") for item in records["items"]))
 
 
