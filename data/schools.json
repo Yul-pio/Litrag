@@ -1,0 +1,112 @@
+[
+  {
+    "id": "pku",
+    "name": "北京大学",
+    "short_name": "北大",
+    "city": "北京",
+    "aliases": ["北大", "PKU"],
+    "admissions_url": "https://admission.pku.edu.cn/",
+    "homepage": "https://www.pku.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以北京大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "tsinghua",
+    "name": "清华大学",
+    "short_name": "清华",
+    "city": "北京",
+    "aliases": ["清华", "THU"],
+    "admissions_url": "https://yz.tsinghua.edu.cn/",
+    "homepage": "https://www.tsinghua.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能", "自动化"],
+    "note": "以清华大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "ustc",
+    "name": "中国科学技术大学",
+    "short_name": "中科大",
+    "city": "合肥",
+    "aliases": ["中科大", "中国科大", "USTC"],
+    "admissions_url": "https://yz.ustc.edu.cn/",
+    "homepage": "https://www.ustc.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以中国科大研究生招生网及院系官网为准"
+  },
+  {
+    "id": "ucas",
+    "name": "中国科学院大学",
+    "short_name": "中科院 / 国科大",
+    "city": "北京",
+    "aliases": ["中科院", "国科大", "UCAS"],
+    "admissions_url": "https://admission.ucas.ac.cn/",
+    "homepage": "https://www.ucas.ac.cn/",
+    "focus_programs": ["计算机科学与技术", "人工智能", "软件工程"],
+    "note": "中科院各研究所招生信息还需以研究所官网为准"
+  },
+  {
+    "id": "seu",
+    "name": "东南大学",
+    "short_name": "东南",
+    "city": "南京",
+    "aliases": ["东南", "SEU"],
+    "admissions_url": "https://yzb.seu.edu.cn/",
+    "homepage": "https://www.seu.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以东南大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "nju",
+    "name": "南京大学",
+    "short_name": "南京",
+    "city": "南京",
+    "aliases": ["南大", "NJU"],
+    "admissions_url": "https://yzb.nju.edu.cn/",
+    "homepage": "https://www.nju.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以南京大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "nankai",
+    "name": "南开大学",
+    "short_name": "南开",
+    "city": "天津",
+    "aliases": ["南开", "NKU"],
+    "admissions_url": "https://yzb.nankai.edu.cn/",
+    "homepage": "https://www.nankai.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以南开大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "fudan",
+    "name": "复旦大学",
+    "short_name": "复旦",
+    "city": "上海",
+    "aliases": ["复旦", "FDU"],
+    "admissions_url": "https://gsao.fudan.edu.cn/",
+    "homepage": "https://www.fudan.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能"],
+    "note": "以复旦大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "bupt",
+    "name": "北京邮电大学",
+    "short_name": "北邮",
+    "city": "北京",
+    "aliases": ["北邮", "BUPT"],
+    "admissions_url": "https://yzb.bupt.edu.cn/",
+    "homepage": "https://www.bupt.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能", "网络空间安全"],
+    "note": "以北京邮电大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "zju",
+    "name": "浙江大学",
+    "short_name": "浙江",
+    "city": "杭州",
+    "aliases": ["浙大", "ZJU"],
+    "admissions_url": "https://grs.zju.edu.cn/yjszs/",
+    "homepage": "https://www.zju.edu.cn/",
+    "focus_programs": ["计算机科学与技术", "软件工程", "人工智能", "控制科学与工程"],
+    "note": "以浙江大学研究生招生网及院系官网为准"
+  }
+]

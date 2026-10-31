@@ -98,6 +98,12 @@ class TestRadar(unittest.TestCase):
         self.assertEqual(data["count"], len(data["items"]))
         self.assertTrue(any(item.get("doc_id") for item in data["items"]))
 
+    def test_school_registry_is_available(self):
+        data = service.list_schools()
+        self.assertEqual(data["count"], 10)
+        self.assertEqual(data["count"], len(data["items"]))
+        self.assertTrue(all(item.get("admissions_url") for item in data["items"]))
+
 
 class TestEndToEnd(unittest.TestCase):
     @classmethod

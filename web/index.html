@@ -177,6 +177,13 @@
 .meta-pill{border:1px solid var(--line);border-radius:999px;padding:2px 7px;color:var(--muted);font-size:9px}
 .meta-pill.audience{color:var(--accent2);background:var(--accentSoft);border-color:transparent}
 
+
+.school-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.school-link{display:block;text-decoration:none;border:1px solid var(--line);border-radius:9px;background:var(--surface2);padding:8px 9px;color:var(--ink);transition:.16s}
+.school-link:hover{border-color:var(--accent);background:var(--accentSoft);transform:translateY(-1px)}
+.school-short{display:block;font-size:11px;font-weight:750;line-height:1.35}
+.school-city{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+
 [hidden]{display:none!important}
 </style>
 </head>
@@ -263,6 +270,11 @@
     <section class="side-card">
       <div class="side-title">本科生怎么用 <span>How to use</span></div>
       <p class="side-note">1. 先选自己的阶段<br>2. 看“本科生怎么用”<br>3. 打开论文，直接问原文</p>
+    </section>
+    <section class="side-card">
+      <div class="side-title">目标院校 <span>Official portals</span></div>
+      <div class="school-grid" id="schoolGrid"></div>
+      <p class="side-note">只放官方招生入口。具体复试公告会按学校、专业和时间核验后再发布。</p>
     </section>
   </aside>
 </main>
@@ -438,11 +450,24 @@ document.addEventListener('click',event=>{
 });
 $('drawerClose').addEventListener('click',closeRadarDrawer);drawerOverlay.addEventListener('click',closeRadarDrawer);document.addEventListener('keydown',event=>{if(event.key==='Escape')closeRadarDrawer()});
 $('radarSearch').addEventListener('input',event=>{radarQuery=event.target.value;renderRadar()});$('unreadOnly').addEventListener('change',renderRadar);
+
+async function loadSchools(){
+  try{
+    const r=await fetch('/api/schools'),data=await r.json();
+    if(!r.ok||data.error)throw new Error(data.error||`HTTP ${r.status}`);
+    const items=Array.isArray(data.items)?data.items:[];
+    $('schoolGrid').innerHTML=items.map(school=>`<a class="school-link" href="${escapeRadar(school.admissions_url)}" target="_blank" rel="noopener" title="${escapeRadar(school.name)} · 官方研究生招生入口"><span class="school-short">${escapeRadar(school.short_name||school.name)}</span><span class="school-city">${escapeRadar(school.city||'')}</span></a>`).join('');
+  }catch(error){
+    $('schoolGrid').innerHTML=`<div class="library-empty">院校入口加载失败：${escapeRadar(error.message)}</div>`;
+  }
+}
+
 function applyTheme(theme){document.documentElement.dataset.theme=theme;localStorage.setItem(RADAR_THEME_KEY,theme);$('themeToggle').textContent=theme==='dark'?'☀':'◐'}
 $('themeToggle').addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme==='dark'?'light':'dark'));
 const savedTheme=localStorage.getItem(RADAR_THEME_KEY)||'light';applyTheme(savedTheme);
 const now=new Date();$('radarDay').textContent=String(now.getDate()).padStart(2,'0');$('radarMonth').textContent=`${now.getFullYear()} 年 ${now.getMonth()+1} 月`;
 loadRadar();
+loadSchools();
 if(location.hash==='#workspace')switchView('workspace');else switchView('radar');
 </script>
 </body>

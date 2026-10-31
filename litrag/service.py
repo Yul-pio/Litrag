@@ -32,6 +32,7 @@ from .retriever import Retriever
 ROOT = Path(__file__).resolve().parents[1]
 GLOBAL_INDEX = ROOT / ".index" / "index.json"
 RADAR_PATH = ROOT / "data" / "radar_items.json"
+SCHOOLS_PATH = ROOT / "data" / "schools.json"
 UPLOAD_ROOT = ROOT / "uploads"
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
@@ -314,6 +315,19 @@ def list_documents(sid: str | None) -> dict:
         "demo_docs": _demo_documents(),
         "retention_hours": retention_hours,
     }
+
+
+def list_schools() -> dict:
+    """返回第一期目标院校及官方招生入口。"""
+    if not SCHOOLS_PATH.exists():
+        return {"items": [], "count": 0}
+    try:
+        items = json.loads(SCHOOLS_PATH.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        raise ValueError(f"院校数据读取失败：{exc}") from exc
+    if not isinstance(items, list):
+        raise ValueError("院校数据格式错误")
+    return {"items": items, "count": len(items)}
 
 
 def list_radar_items() -> dict:

@@ -63,6 +63,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/radar":
             self._json(200, service.list_radar_items())
             return
+        if path == "/api/schools":
+            self._json(200, service.list_schools())
+            return
         if path == "/api/file":
             try:
                 doc_id = (parse_qs(parsed.query).get("doc") or [""])[0]
