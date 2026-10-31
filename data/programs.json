@@ -48,5 +48,30 @@
     "notes_label": "招生说明",
     "notes": "强军计划考生试题均与统考考生试题相同，具体招生数和复试分数线根据当年国家计划和生源质量综合确定，招生数以最终录取为准。",
     "verified_at": "2026-10-31"
+  },
+  {
+    "id": "pku-cs-2027-081200-09",
+    "school_id": "pku",
+    "college": "计算机学院",
+    "year": 2027,
+    "major_code": "081200",
+    "major_name": "计算机科学与技术",
+    "degree_type": "学硕",
+    "study_mode": "全日制",
+    "direction_code": "09",
+    "direction_name": "人工智能",
+    "plan": null,
+    "recommendation_quota": null,
+    "program_total_plan": 76,
+    "program_total_recommendation": 57,
+    "exam_subjects": [
+      "101 思想政治理论",
+      "201 英语（一）",
+      "301 数学（一）",
+      "408 计算机学科专业基础"
+    ],
+    "notes_label": "专业备注",
+    "notes": "在北京大学新燕园校区招生（地点：北京市昌平区）；复试内容：1.上机考试；2.综合考核。",
+    "verified_at": "2026-10-31"
   }
 ]

@@ -70,5 +70,42 @@
     "read_minutes": 4,
     "feed_date": "2026-10-31",
     "feed_time": "16:43"
+  },
+  {
+    "id": "pku-2027-catalog-32bd8f54",
+    "school_id": "pku",
+    "college": "计算机学院",
+    "year": 2027,
+    "document_type": "招生专业目录",
+    "title": "北京大学2027年硕士研究生招生专业目录（计算机学院）",
+    "source_id": "pku-grad",
+    "source_url": "https://admission.pku.edu.cn/zsxx/sszs/zyml/2027/yx/zsml_ss_yx_00101.pdf",
+    "source_label": "北京大学研究生招生网 · 官方 PDF",
+    "source_kind": "PDF",
+    "page_location": "招生目录列表 → 计算机学院",
+    "published_at": null,
+    "verified_at": "2026-10-31",
+    "status": "verified",
+    "program_ids": [
+      "pku-cs-2027-081200-09"
+    ],
+    "summary": "北京大学计算机学院2027年硕士招生专业目录显示，081200计算机科学与技术全日制计划招生76人、拟接收推免57人；目录包含人工智能等14个研究方向，初试科目为101、201、301和408。",
+    "why": "这是官方招生目录，可用于核对学硕专业代码、研究方向、总体招生计划和推免规模。",
+    "undergrad": "先确认09人工智能方向的初试科目和总体招生规模，再查看学院后续复试细则；目录注明复试包含上机考试和综合考核。",
+    "tags": [
+      "北京大学",
+      "计算机学院",
+      "计算机科学与技术",
+      "人工智能",
+      "招生目录"
+    ],
+    "audiences": [
+      "大四"
+    ],
+    "featured": true,
+    "signal": "官方已核验",
+    "read_minutes": 4,
+    "feed_date": "2026-10-31",
+    "feed_time": "23:30"
   }
 ]
