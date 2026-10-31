@@ -97,6 +97,11 @@ class TestRadar(unittest.TestCase):
         self.assertGreaterEqual(data["count"], 5)
         self.assertEqual(data["count"], len(data["items"]))
         self.assertTrue(any(item.get("doc_id") for item in data["items"]))
+        pku = next(item for item in data["items"] if item["id"] == "pku-softmicro-2027-catalog")
+        self.assertEqual(pku["major_code"], "085400")
+        self.assertEqual(pku["direction_code"], "01")
+        self.assertEqual(pku["program_total_plan"], 583)
+        self.assertEqual(pku["program_total_recommendation"], 255)
 
     def test_school_registry_is_available(self):
         data = service.list_schools()
