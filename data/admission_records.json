@@ -1,0 +1,74 @@
+[
+  {
+    "id": "pku-softmicro-2027-catalog",
+    "school_id": "pku",
+    "college": "软件与微电子学院",
+    "year": 2027,
+    "document_type": "招生专业目录",
+    "title": "北京大学软件与微电子学院2027年硕士研究生招生专业目录",
+    "source_id": "pku-grad",
+    "source_url": "https://admission.pku.edu.cn/zsxx/sszs/zyml/2027/yx/zsml_ss_yx_00017.pdf",
+    "source_label": "北京大学研究生招生网 · 官方 PDF",
+    "source_kind": "PDF",
+    "page_location": "PDF 第 1 页",
+    "published_at": "2026-10-08",
+    "verified_at": "2026-10-31",
+    "status": "verified",
+    "program_ids": [
+      "pku-softmicro-2027-085400-01"
+    ],
+    "summary": "该目录显示，北京大学软件与微电子学院2027年硕士研究生085400电子信息专业总计划583人、总推免255人；其中01软件工程方向计划90人、推免9人。",
+    "why": "这是官方招生目录，可用于核对专业代码、研究方向、考试科目、计划数和推免情况，是准备报考和后续复试材料的第一手依据。",
+    "undergrad": "先确认01软件工程方向的考试科目、招生计划和推免情况；再对照该方向的复试细则、导师信息和代表论文准备材料。",
+    "tags": [
+      "北京大学",
+      "软件与微电子学院",
+      "电子信息",
+      "招生目录"
+    ],
+    "audiences": [
+      "大四"
+    ],
+    "featured": true,
+    "signal": "官方已核验",
+    "read_minutes": 4,
+    "feed_date": "2026-10-31",
+    "feed_time": "13:50"
+  },
+  {
+    "id": "thu-cs-2027-catalog",
+    "school_id": "tsinghua",
+    "college": "计算机科学与技术系",
+    "year": 2027,
+    "document_type": "招生专业目录",
+    "title": "清华大学2027年硕士研究生招生专业目录（计算机科学与技术系·统招）",
+    "source_id": "tsinghua-grad",
+    "source_url": "https://yzbm.tsinghua.edu.cn/publish/s02/s0203/detail/c0fb8664-255f-4d6f-bf40-a5893e3343ec?yxsdm=024&ksfs=",
+    "source_label": "清华大学研究生招生网 · 官方页面",
+    "source_kind": "HTML 招生目录",
+    "page_location": "024 计算机科学与技术系 → 085400 电子信息 → 01 方向",
+    "published_at": null,
+    "verified_at": "2026-10-31",
+    "status": "verified",
+    "program_ids": [
+      "thu-cs-2027-085400-01"
+    ],
+    "summary": "清华大学2027年硕士研究生统招专业目录显示，024计算机科学与技术系085400电子信息专业计划招生13人，01方向为计算机科学与技术专业硕士，初试科目为101、201、301和408。",
+    "why": "这是清华官方统招专业目录，可用于核对院系代码、专业代码、研究方向、统考计划和初试科目。",
+    "undergrad": "先确认01计算机科学与技术专业硕士方向的统考计划和初试科目，再继续查找该系后续发布的复试细则、导师方向和相关论文。",
+    "tags": [
+      "清华大学",
+      "计算机科学与技术系",
+      "电子信息",
+      "招生目录"
+    ],
+    "audiences": [
+      "大四"
+    ],
+    "featured": true,
+    "signal": "官方已核验",
+    "read_minutes": 4,
+    "feed_date": "2026-10-31",
+    "feed_time": "16:43"
+  }
+]

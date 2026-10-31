@@ -66,6 +66,15 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/schools":
             self._json(200, service.list_schools())
             return
+        if path == "/api/sources":
+            self._json(200, service.list_sources())
+            return
+        if path == "/api/programs":
+            self._json(200, service.list_programs())
+            return
+        if path == "/api/admissions":
+            self._json(200, service.list_admission_records())
+            return
         if path == "/api/file":
             try:
                 doc_id = (parse_qs(parsed.query).get("doc") or [""])[0]

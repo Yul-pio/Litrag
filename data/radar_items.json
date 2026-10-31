@@ -1,55 +1,5 @@
 [
   {
-    "id": "pku-softmicro-2027-catalog",
-    "date": "2026-10-31",
-    "time": "13:50",
-    "category": "院校信息",
-    "category_key": "school",
-    "source": "北京大学研究生招生网 · 官方 PDF",
-    "source_url": "https://admission.pku.edu.cn/zsxx/sszs/zyml/2027/yx/zsml_ss_yx_00017.pdf",
-    "source_type": "官方",
-    "title": "北京大学软件与微电子学院2027年硕士研究生招生专业目录",
-    "summary": "该目录显示，北京大学软件与微电子学院2027年硕士研究生085400电子信息专业总计划583人、总推免255人；其中01软件工程方向计划90人、推免9人。",
-    "why": "这是官方招生目录，可用于核对专业代码、研究方向、考试科目、计划数和推免情况，是准备报考和后续复试材料的第一手依据。",
-    "undergrad": "先确认01软件工程方向的考试科目、招生计划和推免情况；再对照该方向的复试细则、导师信息和代表论文准备材料。",
-    "tags": [
-      "北京大学",
-      "软件与微电子学院",
-      "电子信息",
-      "招生目录"
-    ],
-    "audiences": [
-      "大四"
-    ],
-    "difficulty": "信息",
-    "featured": true,
-    "signal": "官方已核验",
-    "read_minutes": 4,
-    "published_at": "2026-10-08",
-    "verified_at": "2026-10-31",
-    "document_type": "招生专业目录",
-    "pdf_page": 1,
-    "school": "北京大学",
-    "college": "软件与微电子学院",
-    "major": "电子信息",
-    "major_code": "085400",
-    "degree_type": "专硕",
-    "study_mode": "全日制",
-    "program_total_plan": 583,
-    "program_total_recommendation": 255,
-    "direction_code": "01",
-    "direction_name": "软件工程",
-    "direction_plan": 90,
-    "direction_recommendation": 9,
-    "exam_subjects": [
-      "101 思想政治理论",
-      "201 英语（一）",
-      "301 数学（一）",
-      "408 计算机学科专业基础"
-    ],
-    "notes": "01-02方向统考科目相同，统一划定统考分数线，统一排名，择优录取。01方向拟招90人（含推免9人），02方向拟招135人，03方向拟招50人，04方向拟招100人（含推免38人）。05、06、07方向只招收推免生。各方向最终录取人数将根据生源情况确定，应试生招生人数以招生计划减去实际接收的推荐免试生人数为准。"
-  },
-  {
     "id": "retest-paper-presentation",
     "date": "2026-10-31",
     "time": "09:10",

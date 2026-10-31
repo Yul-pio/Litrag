@@ -11,3 +11,5 @@ data/papers/*.pdf
 
 tools/
 uploads/
+# Automated collection candidates are reviewed before publication
+data/candidates/*.json

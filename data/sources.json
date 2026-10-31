@@ -1,0 +1,162 @@
+[
+  {
+    "id": "pku-grad",
+    "school_id": "pku",
+    "name": "北京大学研究生招生网",
+    "url": "https://admission.pku.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以北京大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "tsinghua-grad",
+    "school_id": "tsinghua",
+    "name": "清华大学研究生招生网",
+    "url": "https://yz.tsinghua.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以清华大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "ustc-grad",
+    "school_id": "ustc",
+    "name": "中国科学技术大学研究生招生网",
+    "url": "https://yz.ustc.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以中国科大研究生招生网及院系官网为准"
+  },
+  {
+    "id": "ucas-grad",
+    "school_id": "ucas",
+    "name": "中国科学院大学研究生招生网",
+    "url": "https://admission.ucas.ac.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "中科院各研究所招生信息还需以研究所官网为准"
+  },
+  {
+    "id": "seu-grad",
+    "school_id": "seu",
+    "name": "东南大学研究生招生网",
+    "url": "https://yzb.seu.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以东南大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "nju-grad",
+    "school_id": "nju",
+    "name": "南京大学研究生招生网",
+    "url": "https://yzb.nju.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以南京大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "nankai-grad",
+    "school_id": "nankai",
+    "name": "南开大学研究生招生网",
+    "url": "https://yzb.nankai.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以南开大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "fudan-grad",
+    "school_id": "fudan",
+    "name": "复旦大学研究生招生网",
+    "url": "https://gsao.fudan.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以复旦大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "bupt-grad",
+    "school_id": "bupt",
+    "name": "北京邮电大学研究生招生网",
+    "url": "https://yzb.bupt.edu.cn/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以北京邮电大学研究生招生网及院系官网为准"
+  },
+  {
+    "id": "zju-grad",
+    "school_id": "zju",
+    "name": "浙江大学研究生招生网",
+    "url": "https://grs.zju.edu.cn/yjszs/",
+    "source_type": "official",
+    "content_types": [
+      "招生简章",
+      "招生专业目录",
+      "复试细则",
+      "分数线"
+    ],
+    "update_frequency": "daily",
+    "enabled": true,
+    "notes": "以浙江大学研究生招生网及院系官网为准"
+  }
+]

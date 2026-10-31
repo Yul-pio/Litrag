@@ -33,6 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 GLOBAL_INDEX = ROOT / ".index" / "index.json"
 RADAR_PATH = ROOT / "data" / "radar_items.json"
 SCHOOLS_PATH = ROOT / "data" / "schools.json"
+SOURCES_PATH = ROOT / "data" / "sources.json"
+PROGRAMS_PATH = ROOT / "data" / "programs.json"
+ADMISSIONS_PATH = ROOT / "data" / "admission_records.json"
 UPLOAD_ROOT = ROOT / "uploads"
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
@@ -317,29 +320,114 @@ def list_documents(sid: str | None) -> dict:
     }
 
 
+def _load_list(path: Path, label: str) -> list[dict]:
+    if not path.exists():
+        return []
+    try:
+        items = json.loads(path.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        raise ValueError(f"{label}读取失败：{exc}") from exc
+    if not isinstance(items, list):
+        raise ValueError(f"{label}格式错误")
+    return items
+
+
 def list_schools() -> dict:
     """返回第一期目标院校及官方招生入口。"""
-    if not SCHOOLS_PATH.exists():
-        return {"items": [], "count": 0}
-    try:
-        items = json.loads(SCHOOLS_PATH.read_text(encoding="utf-8-sig"))
-    except Exception as exc:
-        raise ValueError(f"院校数据读取失败：{exc}") from exc
-    if not isinstance(items, list):
-        raise ValueError("院校数据格式错误")
+    items = _load_list(SCHOOLS_PATH, "院校数据")
     return {"items": items, "count": len(items)}
 
 
+def list_sources() -> dict:
+    """返回采集源注册表。"""
+    items = _load_list(SOURCES_PATH, "采集源数据")
+    return {"items": items, "count": len(items)}
+
+
+def list_programs() -> dict:
+    """返回专业与研究方向的结构化记录。"""
+    items = _load_list(PROGRAMS_PATH, "专业数据")
+    return {"items": items, "count": len(items)}
+
+
+def list_admission_records() -> dict:
+    """返回已核验的招生文档记录。"""
+    items = _load_list(ADMISSIONS_PATH, "招生记录")
+    return {"items": items, "count": len(items)}
+
+
+def _official_to_radar(record: dict, programs: dict[str, dict], sources: dict[str, dict], schools: dict[str, dict]) -> dict:
+    program_ids = record.get("program_ids") or []
+    program = programs.get(program_ids[0], {}) if program_ids else {}
+    source = sources.get(record.get("source_id", ""), {})
+    school = schools.get(record.get("school_id", ""), {})
+    source_kind = record.get("source_kind") or "官方页面"
+    default_source = f"{source.get('name', '官方来源')} · 官方{'PDF' if source_kind == 'PDF' else '页面'}"
+    program_summary = {
+        "major": program.get("major_name", ""),
+        "major_code": program.get("major_code", ""),
+        "degree_type": program.get("degree_type", ""),
+        "study_mode": program.get("study_mode", ""),
+        "direction_code": program.get("direction_code", ""),
+        "direction_name": program.get("direction_name", ""),
+        "direction_plan": program.get("plan"),
+        "direction_recommendation": program.get("recommendation_quota"),
+        "program_total_plan": program.get("program_total_plan"),
+        "program_total_recommendation": program.get("program_total_recommendation"),
+        "exam_subjects": program.get("exam_subjects", []),
+        "notes": program.get("notes", ""),
+        "notes_label": program.get("notes_label", "专业备注"),
+        "program_id": program.get("id"),
+    }
+    return {
+        "id": record["id"],
+        "date": record.get("feed_date") or record.get("published_at") or record.get("verified_at", ""),
+        "time": record.get("feed_time", ""),
+        "category": "院校信息",
+        "category_key": "school",
+        "source": record.get("source_label") or default_source,
+        "source_url": record.get("source_url", ""),
+        "source_type": "官方",
+        "source_id": record.get("source_id"),
+        "source_kind": source_kind,
+        "title": record.get("title", ""),
+        "summary": record.get("summary", ""),
+        "why": record.get("why", ""),
+        "undergrad": record.get("undergrad", ""),
+        "tags": record.get("tags", []),
+        "audiences": record.get("audiences", []),
+        "difficulty": "信息",
+        "featured": bool(record.get("featured")),
+        "signal": record.get("signal", "官方已核验"),
+        "read_minutes": record.get("read_minutes", 4),
+        "published_at": record.get("published_at"),
+        "verified_at": record.get("verified_at"),
+        "date_status": record.get("date_status"),
+        "document_type": record.get("document_type"),
+        "page_location": record.get("page_location", ""),
+        "school_id": record.get("school_id"),
+        "school": school.get("name", ""),
+        "college": record.get("college", program.get("college", "")),
+        "year": record.get("year"),
+        "status": record.get("status", "draft"),
+        "program_ids": program_ids,
+        **program_summary,
+    }
+
+
 def list_radar_items() -> dict:
-    """返回研究雷达的精选条目。内容与代码分离，方便持续更新。"""
-    if not RADAR_PATH.exists():
-        return {"items": [], "count": 0}
-    try:
-        items = json.loads(RADAR_PATH.read_text(encoding="utf-8-sig"))
-    except Exception as exc:
-        raise ValueError(f"研究雷达数据读取失败：{exc}") from exc
-    if not isinstance(items, list):
-        raise ValueError("研究雷达数据格式错误")
+    """合并人工精选内容与已核验招生记录，生成首页信息流。"""
+    curated = _load_list(RADAR_PATH, "研究雷达数据")
+    records = _load_list(ADMISSIONS_PATH, "招生记录")
+    programs = {item["id"]: item for item in _load_list(PROGRAMS_PATH, "专业数据") if item.get("id")}
+    sources = {item["id"]: item for item in _load_list(SOURCES_PATH, "采集源数据") if item.get("id")}
+    schools = {item["id"]: item for item in _load_list(SCHOOLS_PATH, "院校数据") if item.get("id")}
+    official = [
+        _official_to_radar(record, programs, sources, schools)
+        for record in records
+        if record.get("status") == "verified"
+    ]
+    items = official + curated
     return {"items": items, "count": len(items)}
 
 

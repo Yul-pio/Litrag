@@ -23,6 +23,7 @@ from litrag.evaluate import run_refusal_eval
 from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
 from litrag import service
+from scripts.collectors.pku import collect_pku_catalog
 from litrag.retriever import Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -91,6 +92,18 @@ class TestChunker(unittest.TestCase):
         self.assertTrue(chunks[1].text.startswith(chunks[0].text[-25:]))
 
 
+class TestCollectors(unittest.TestCase):
+    def test_pku_catalog_link_is_candidate(self):
+        html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        result = collect_pku_catalog(year=2027, html=html, college_filter="软件与微电子学院")
+        self.assertEqual(result["count"], 1)
+        item = result["items"][0]
+        self.assertEqual(item["status"], "candidate")
+        self.assertEqual(item["source_id"], "pku-grad")
+        self.assertEqual(item["college"], "软件与微电子学院")
+        self.assertTrue(item["source_url"].endswith("zsml_ss_yx_00017.pdf"))
+
+
 class TestRadar(unittest.TestCase):
     def test_radar_items_are_available(self):
         data = service.list_radar_items()
@@ -102,12 +115,26 @@ class TestRadar(unittest.TestCase):
         self.assertEqual(pku["direction_code"], "01")
         self.assertEqual(pku["program_total_plan"], 583)
         self.assertEqual(pku["program_total_recommendation"], 255)
+        thu = next(item for item in data["items"] if item["id"] == "thu-cs-2027-catalog")
+        self.assertEqual(thu["major_code"], "085400")
+        self.assertEqual(thu["direction_code"], "01")
+        self.assertEqual(thu["direction_name"], "计算机科学与技术专业硕士")
+        self.assertEqual(thu["program_total_plan"], 13)
 
     def test_school_registry_is_available(self):
         data = service.list_schools()
         self.assertEqual(data["count"], 10)
         self.assertEqual(data["count"], len(data["items"]))
         self.assertTrue(all(item.get("admissions_url") for item in data["items"]))
+
+    def test_structured_admission_data_is_available(self):
+        sources = service.list_sources()
+        programs = service.list_programs()
+        records = service.list_admission_records()
+        self.assertGreaterEqual(sources["count"], 10)
+        self.assertEqual(programs["count"], 2)
+        self.assertEqual(records["count"], 2)
+        self.assertTrue(all(item.get("source_url") for item in records["items"]))
 
 
 class TestEndToEnd(unittest.TestCase):

@@ -26,11 +26,16 @@ SINGLE_FILES = [
     "data/doc_aliases.json",
     "data/radar_items.json",
     "data/schools.json",
+    "data/sources.json",
+    "data/programs.json",
+    "data/admission_records.json",
 ]
 GLOBS = [
     "litrag/*.py",
     "data/docs/*.md",
     "web/*.html",
+    "scripts/**/*.py",
+    "docs/*.md",
 ]
 
 
@@ -55,7 +60,7 @@ def main() -> None:
         print(f"打包完成：{OUT}")
         print(f"大小：{OUT.stat().st_size / 1024:.0f} KB   文件数：{len(names)}\n")
         print("关键文件指纹（和线上对不上，就说明包是旧的）：")
-        for name in ["web/index.html", "app.py", "litrag/query.py", "data/radar_items.json", "data/schools.json", ".index/index.json"]:
+        for name in ["web/index.html", "app.py", "litrag/query.py", "data/radar_items.json", "data/schools.json", "data/sources.json", "data/programs.json", "data/admission_records.json", ".index/index.json"]:
             if name not in names:
                 print(f"  {name:24s} 不在包里")
                 continue

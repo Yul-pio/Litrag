@@ -1,0 +1,52 @@
+[
+  {
+    "id": "pku-softmicro-2027-085400-01",
+    "school_id": "pku",
+    "college": "软件与微电子学院",
+    "year": 2027,
+    "major_code": "085400",
+    "major_name": "电子信息",
+    "degree_type": "专硕",
+    "study_mode": "全日制",
+    "direction_code": "01",
+    "direction_name": "软件工程",
+    "plan": 90,
+    "recommendation_quota": 9,
+    "program_total_plan": 583,
+    "program_total_recommendation": 255,
+    "exam_subjects": [
+      "101 思想政治理论",
+      "201 英语（一）",
+      "301 数学（一）",
+      "408 计算机学科专业基础"
+    ],
+    "notes_label": "专业备注",
+    "notes": "01-02方向统考科目相同，统一划定统考分数线，统一排名，择优录取。01方向拟招90人（含推免9人），02方向拟招135人，03方向拟招50人，04方向拟招100人（含推免38人）。05、06、07方向只招收推免生。各方向最终录取人数将根据生源情况确定，应试生招生人数以招生计划减去实际接收的推荐免试生人数为准。",
+    "verified_at": "2026-10-31"
+  },
+  {
+    "id": "thu-cs-2027-085400-01",
+    "school_id": "tsinghua",
+    "college": "计算机科学与技术系",
+    "year": 2027,
+    "major_code": "085400",
+    "major_name": "电子信息",
+    "degree_type": "专硕",
+    "study_mode": "全日制",
+    "direction_code": "01",
+    "direction_name": "计算机科学与技术专业硕士",
+    "plan": 13,
+    "recommendation_quota": null,
+    "program_total_plan": 13,
+    "program_total_recommendation": null,
+    "exam_subjects": [
+      "101 思想政治理论",
+      "201 英语（一）",
+      "301 数学（一）",
+      "408 计算机学科专业基础"
+    ],
+    "notes_label": "招生说明",
+    "notes": "强军计划考生试题均与统考考生试题相同，具体招生数和复试分数线根据当年国家计划和生源质量综合确定，招生数以最终录取为准。",
+    "verified_at": "2026-10-31"
+  }
+]

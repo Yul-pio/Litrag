@@ -64,6 +64,15 @@ def application(environ, start_response):
         if method == "GET" and path == "/api/schools":
             return _json(start_response, "200 OK", service.list_schools())
 
+        if method == "GET" and path == "/api/sources":
+            return _json(start_response, "200 OK", service.list_sources())
+
+        if method == "GET" and path == "/api/programs":
+            return _json(start_response, "200 OK", service.list_programs())
+
+        if method == "GET" and path == "/api/admissions":
+            return _json(start_response, "200 OK", service.list_admission_records())
+
         if method == "GET" and path == "/api/file":
             query = parse_qs(environ.get("QUERY_STRING", ""))
             doc_id = (query.get("doc") or [""])[0]
