@@ -91,6 +91,14 @@ class TestChunker(unittest.TestCase):
         self.assertTrue(chunks[1].text.startswith(chunks[0].text[-25:]))
 
 
+class TestRadar(unittest.TestCase):
+    def test_radar_items_are_available(self):
+        data = service.list_radar_items()
+        self.assertGreaterEqual(data["count"], 5)
+        self.assertEqual(data["count"], len(data["items"]))
+        self.assertTrue(any(item.get("doc_id") for item in data["items"]))
+
+
 class TestEndToEnd(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

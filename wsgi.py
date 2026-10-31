@@ -58,6 +58,9 @@ def application(environ, start_response):
         if method == "GET" and path == "/api/docs":
             return _json(start_response, "200 OK", service.list_documents(sid))
 
+        if method == "GET" and path == "/api/radar":
+            return _json(start_response, "200 OK", service.list_radar_items())
+
         if method == "GET" and path == "/api/file":
             query = parse_qs(environ.get("QUERY_STRING", ""))
             doc_id = (query.get("doc") or [""])[0]
@@ -85,8 +88,11 @@ def application(environ, start_response):
         if method == "POST" and path == "/api/ask":
             length = int(environ.get("CONTENT_LENGTH") or 0)
             payload = json.loads(environ["wsgi.input"].read(length) or b"{}")
-            return _json(start_response, "200 OK",
-                         service.ask(payload.get("question", ""), sid))
+            return _json(start_response, "200 OK", service.ask(
+                payload.get("question", ""),
+                sid,
+                demo=bool(payload.get("demo")),
+            ))
 
         if method == "POST" and path == "/api/upload":
             query = parse_qs(environ.get("QUERY_STRING", ""))

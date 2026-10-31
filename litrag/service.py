@@ -31,6 +31,7 @@ from .retriever import Retriever
 
 ROOT = Path(__file__).resolve().parents[1]
 GLOBAL_INDEX = ROOT / ".index" / "index.json"
+RADAR_PATH = ROOT / "data" / "radar_items.json"
 UPLOAD_ROOT = ROOT / "uploads"
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
@@ -315,6 +316,19 @@ def list_documents(sid: str | None) -> dict:
     }
 
 
+def list_radar_items() -> dict:
+    """返回研究雷达的精选条目。内容与代码分离，方便持续更新。"""
+    if not RADAR_PATH.exists():
+        return {"items": [], "count": 0}
+    try:
+        items = json.loads(RADAR_PATH.read_text(encoding="utf-8-sig"))
+    except Exception as exc:
+        raise ValueError(f"研究雷达数据读取失败：{exc}") from exc
+    if not isinstance(items, list):
+        raise ValueError("研究雷达数据格式错误")
+    return {"items": items, "count": len(items)}
+
+
 def _demo_documents() -> list[dict]:
     try:
         retriever = _global()
@@ -363,7 +377,7 @@ def _looks_like_question(text: str) -> bool:
     return len(text) >= 20
 
 
-def ask(question: str, sid: str | None) -> dict:
+def ask(question: str, sid: str | None, demo: bool = False) -> dict:
     question = (question or "").strip()
     if not question:
         raise ValueError("问题不能为空")
@@ -384,7 +398,10 @@ def ask(question: str, sid: str | None) -> dict:
         }
 
     plan = build_query_plan(question)
-    retriever, source = get_retriever(sid)
+    if demo:
+        retriever, source = _global(), "demo"
+    else:
+        retriever, source = get_retriever(sid)
     hits = retriever.search(question, k=5)
     result = answer(question, hits, use_llm=True, retrieval_query=plan.expanded)
     docs_used: list[str] = []

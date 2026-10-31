@@ -60,6 +60,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/docs":
             self._json(200, service.list_documents(self.session))
             return
+        if path == "/api/radar":
+            self._json(200, service.list_radar_items())
+            return
         if path == "/api/file":
             try:
                 doc_id = (parse_qs(parsed.query).get("doc") or [""])[0]
@@ -86,6 +89,7 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if path == "/api/session":
                 self._json(200, service.clear_session(self.session))
+                return
             if path == "/api/doc":
                 doc_id = (parse_qs(urlparse(self.path).query).get("doc") or [""])[0]
                 self._json(200, service.delete_document(self.session, doc_id))
@@ -103,7 +107,11 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if parsed.path == "/api/ask":
                 payload = json.loads(self.rfile.read(length) or b"{}")
-                self._json(200, service.ask(payload.get("question", ""), self.session))
+                self._json(200, service.ask(
+                    payload.get("question", ""),
+                    self.session,
+                    demo=bool(payload.get("demo")),
+                ))
                 return
 
             if parsed.path == "/api/upload":
