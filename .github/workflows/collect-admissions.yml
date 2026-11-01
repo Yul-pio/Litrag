@@ -22,11 +22,18 @@ jobs:
             --school pku \
             --year 2027 \
             --output data/candidates/pku_2027_catalog.json
+      - name: Review PKU candidates
+        run: |
+          python scripts/review_candidates.py \
+            --candidate-file data/candidates/pku_2027_catalog.json \
+            --output data/candidates/pku_2027_catalog.review.md
       - name: Upload PKU candidates for review
         uses: actions/upload-artifact@v4
         with:
           name: pku-2027-catalog-candidates
-          path: data/candidates/pku_2027_catalog.json
+          path: |
+            data/candidates/pku_2027_catalog.json
+            data/candidates/pku_2027_catalog.review.md
           if-no-files-found: error
 
   tsinghua:
@@ -43,9 +50,16 @@ jobs:
             --year 2027 \
             --college 计算机科学与技术系 \
             --output data/candidates/tsinghua_2027_catalog.json
+      - name: Review Tsinghua candidates
+        run: |
+          python scripts/review_candidates.py \
+            --candidate-file data/candidates/tsinghua_2027_catalog.json \
+            --output data/candidates/tsinghua_2027_catalog.review.md
       - name: Upload Tsinghua candidates for review
         uses: actions/upload-artifact@v4
         with:
           name: tsinghua-2027-catalog-candidates
-          path: data/candidates/tsinghua_2027_catalog.json
+          path: |
+            data/candidates/tsinghua_2027_catalog.json
+            data/candidates/tsinghua_2027_catalog.review.md
           if-no-files-found: error

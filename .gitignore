@@ -13,3 +13,5 @@ tools/
 uploads/
 # Automated collection candidates are reviewed before publication
 data/candidates/*.json
+data/candidates/*.review.md
+data/candidates/*.review.json

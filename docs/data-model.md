@@ -245,6 +245,36 @@ python scripts/collect_candidates.py --school tsinghua --year 2027 --college 计
 清华采集器会从 HTML 表格中解析院系、专业、方向、计划数、考试科目和招生说明，
 按研究方向生成候选；跨行合并的考试科目也会继承到对应方向。
 
+## 候选差异审核
+
+候选生成后先与正式库对比，不直接发布：
+
+```powershell
+python scripts/review_candidates.py `
+  --candidate-file data/candidates/tsinghua_2027_catalog.json
+```
+
+报告会区分新增、变更、未变和正式库中缺失的方向，并把以下字段标为高风险：
+
+- 方向招生计划、推免人数；
+- 专业总计划、总推免人数；
+- 初试科目；
+- 官方来源链接。
+
+需要机器可读结果时使用：
+
+```powershell
+python scripts/review_candidates.py `
+  --candidate-file data/candidates/tsinghua_2027_catalog.json `
+  --format json
+```
+
+如果希望把新增、变更或正式库缺失视为失败，可加 `--fail-on-changes`，
+此时有差异会返回退出码 `2`，适合后续接入自动告警。
+
+自动采集工作流会同时上传候选 JSON 和 Markdown 审核报告。审核工具只读正式数据，
+不会自动改写 `programs.json` 或 `admission_records.json`。
+
 ## 审核转换工具
 
 从候选生成审核单：

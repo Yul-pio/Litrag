@@ -9,6 +9,8 @@ from __future__ import annotations
 import shutil
 import sys
 import unittest
+from copy import deepcopy
+import json
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,6 +28,7 @@ from litrag import service
 from scripts.collectors.pku import collect_pku_catalog
 from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import build_records, draft_review, validate_review
+from scripts.review_candidates import render_markdown, review_candidates
 from litrag.retriever import Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -186,6 +189,54 @@ class TestCandidatePromotion(unittest.TestCase):
         review["source_url"] = "https://example.com/wrong.pdf"
         with self.assertRaises(ValueError):
             validate_review(review, candidate)
+
+
+class TestCandidateReview(unittest.TestCase):
+    def setUp(self):
+        self.programs = json.loads((ROOT / "data" / "programs.json").read_text(encoding="utf-8"))
+        self.admissions = json.loads((ROOT / "data" / "admission_records.json").read_text(encoding="utf-8"))
+
+    def test_tsinghua_review_detects_new_direction_and_changed_notes(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        payload = collect_tsinghua_catalog(year=2027, html=html, college_filter="计算机科学与技术系")
+
+        report = review_candidates(payload, self.programs, self.admissions)
+        by_direction = {item["direction_code"]: item for item in report["items"]}
+
+        self.assertEqual(report["summary"]["new"], 1)
+        self.assertEqual(report["summary"]["changed"], 1)
+        self.assertEqual(by_direction["01"]["status"], "changed")
+        self.assertIn("program.notes", {item["field"] for item in by_direction["01"]["changes"]})
+        self.assertEqual(by_direction["03"]["status"], "new")
+        self.assertEqual(by_direction["03"]["admission_id"], "thu-cs-2027-catalog")
+        self.assertTrue(by_direction["03"]["existing_document"])
+
+    def test_plan_change_is_high_risk(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        payload = collect_tsinghua_catalog(year=2027, html=html, college_filter="计算机科学与技术系")
+        payload = deepcopy(payload)
+        payload["items"][0]["program"]["plan"] = 14
+
+        report = review_candidates(payload, self.programs, self.admissions)
+        item = next(item for item in report["items"] if item["direction_code"] == "01")
+        plan_change = next(change for change in item["changes"] if change["field"] == "program.plan")
+
+        self.assertEqual(item["status"], "changed")
+        self.assertEqual(plan_change["level"], "high")
+        self.assertEqual(plan_change["formal"], 13)
+        self.assertEqual(plan_change["candidate"], 14)
+        self.assertIn("高风险", render_markdown(report))
+
+    def test_pku_document_candidate_matches_by_source_url(self):
+        html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        payload = collect_pku_catalog(year=2027, html=html, college_filter="软件与微电子学院")
+
+        report = review_candidates(payload, self.programs, self.admissions)
+
+        self.assertEqual(report["summary"]["candidate_count"], 1)
+        self.assertEqual(report["summary"]["unchanged"], 1)
+        self.assertEqual(report["items"][0]["admission_id"], "pku-softmicro-2027-catalog")
+        self.assertEqual(report["items"][0]["risk"], "none")
 
 
 class TestRadar(unittest.TestCase):

@@ -64,6 +64,7 @@ python -m unittest discover -s tests -v
 python scripts/validate_content.py
 python scripts/collect_candidates.py --school pku --year 2027 --college 软件与微电子学院
 python scripts/collect_candidates.py --school tsinghua --year 2027 --college 计算机科学与技术系
+python scripts/review_candidates.py --candidate-file data/candidates/tsinghua_2027_catalog.json
 python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2027_catalog.json --candidate-id <candidate_id>
 ```
 
