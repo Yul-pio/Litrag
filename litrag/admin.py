@@ -13,6 +13,7 @@ import os
 import re
 import threading
 import uuid
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,7 @@ from scripts.promote_candidate import (
     draft_review,
 )
 from scripts.review_candidates import review_candidates
+from litrag import change_events
 
 ROOT = Path(__file__).resolve().parents[1]
 ADMIN_HTML_PATH = ROOT / "web" / "admin.html"
@@ -36,6 +38,7 @@ PENDING_DIR = CANDIDATE_ROOT / "pending"
 PROCESSED_DIR = CANDIDATE_ROOT / "processed"
 REJECTED_DIR = CANDIDATE_ROOT / "rejected"
 AUDIT_PATH = CANDIDATE_ROOT / "review_audit.jsonl"
+CHANGE_EVENTS_PATH = ROOT / "data" / "change_events.json"
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 QUEUE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,180}$")
@@ -363,6 +366,7 @@ def _approve(queue_id: str, candidate_id: str, form: dict, client_ip: str) -> di
     _apply_form(review, form)
 
     update_existing = False
+    old_program = None
     same_direction = [
         item for item in programs
         if direction_key(item) == direction_key(review["program"])
@@ -371,6 +375,7 @@ def _approve(queue_id: str, candidate_id: str, form: dict, client_ip: str) -> di
         if review.get("admission_action") != "append":
             raise AdminError(409, "同方向已存在，但候选来源未匹配到现有招生文档")
         review["program"]["id"] = same_direction[0]["id"]
+        old_program = deepcopy(same_direction[0])
         if not bool(form.get("replace_existing")):
             raise AdminError(409, "该方向已存在；确认覆盖正式记录前请勾选“覆盖已有方向”")
         update_existing = True
@@ -388,6 +393,8 @@ def _approve(queue_id: str, candidate_id: str, form: dict, client_ip: str) -> di
 
     _atomic_write_json(PROGRAMS_PATH, programs)
     _atomic_write_json(ADMISSIONS_PATH, admissions)
+    events = change_events.build_change_events(old_program, program, admission)
+    event_count = change_events.append_change_events(events, CHANGE_EVENTS_PATH)
     _audit(
         "approve",
         queue_id,
@@ -397,6 +404,7 @@ def _approve(queue_id: str, candidate_id: str, form: dict, client_ip: str) -> di
         program_id=program.get("id"),
         admission_id=admission.get("id"),
         replaced_existing=update_existing,
+        change_events=event_count,
     )
     _remove_candidate(path, payload, candidate_id)
     return {
@@ -405,6 +413,7 @@ def _approve(queue_id: str, candidate_id: str, form: dict, client_ip: str) -> di
         "program_id": program.get("id"),
         "admission_id": admission.get("id"),
         "replaced_existing": update_existing,
+        "change_events": event_count,
     }
 
 

@@ -513,7 +513,7 @@
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
         });
         closeDrawer();
-        showToast(`已发布：${result.program_id}`);
+        showToast(`已发布：${result.program_id} · 生成 ${result.change_events || 0} 条变化事件`);
         await loadData();
       } catch (error) {
         showToast(error.message, true);

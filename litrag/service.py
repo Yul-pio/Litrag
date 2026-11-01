@@ -36,6 +36,7 @@ SCHOOLS_PATH = ROOT / "data" / "schools.json"
 SOURCES_PATH = ROOT / "data" / "sources.json"
 PROGRAMS_PATH = ROOT / "data" / "programs.json"
 ADMISSIONS_PATH = ROOT / "data" / "admission_records.json"
+CHANGE_EVENTS_PATH = ROOT / "data" / "change_events.json"
 UPLOAD_ROOT = ROOT / "uploads"
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
@@ -354,6 +355,30 @@ def list_admission_records() -> dict:
     """返回已核验的招生文档记录。"""
     items = _load_list(ADMISSIONS_PATH, "招生记录")
     return {"items": items, "count": len(items)}
+
+
+def list_change_events(limit: int = 50) -> dict:
+    """返回已核验、适合公开展示的招生变化。"""
+    events = _load_list(CHANGE_EVENTS_PATH, "招生变化数据")
+    schools = {item["id"]: item for item in _load_list(SCHOOLS_PATH, "院校数据") if item.get("id")}
+    sources = {item["id"]: item for item in _load_list(SOURCES_PATH, "采集源数据") if item.get("id")}
+    visible = [item for item in events if item.get("user_visible", True)]
+    visible.sort(
+        key=lambda item: f"{item.get('feed_date', '')} {item.get('feed_time', '')} {item.get('id', '')}",
+        reverse=True,
+    )
+    items = []
+    for event in visible[:max(1, limit)]:
+        school = schools.get(event.get("school_id", ""), {})
+        source = sources.get(event.get("source_id", ""), {})
+        items.append({
+            **event,
+            "school": school.get("name", event.get("school_id", "")),
+            "school_short": school.get("short_name", ""),
+            "source": event.get("source_label") or source.get("name", "官方来源"),
+            "source_type": "官方",
+        })
+    return {"items": items, "count": len(items), "total": len(visible)}
 
 
 def _official_to_radar(record: dict, programs: dict[str, dict], sources: dict[str, dict], schools: dict[str, dict]) -> dict:

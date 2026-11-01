@@ -74,6 +74,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/radar":
             self._json(200, service.list_radar_items())
             return
+        if path == "/api/changes":
+            self._json(200, service.list_change_events())
+            return
         if path == "/api/schools":
             self._json(200, service.list_schools())
             return

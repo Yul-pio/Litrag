@@ -92,6 +92,9 @@ def application(environ, start_response):
         if method == "GET" and path == "/api/radar":
             return _json(start_response, "200 OK", service.list_radar_items())
 
+        if method == "GET" and path == "/api/changes":
+            return _json(start_response, "200 OK", service.list_change_events())
+
         if method == "GET" and path == "/api/schools":
             return _json(start_response, "200 OK", service.list_schools())
 

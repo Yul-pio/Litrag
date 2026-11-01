@@ -173,6 +173,23 @@
 .stage-btn{border:1px solid transparent;background:transparent;border-radius:999px;padding:5px 9px;color:var(--muted);font-size:10px;cursor:pointer;white-space:nowrap}
 .stage-btn:hover{background:var(--surface2);color:var(--ink)}
 .stage-btn.active{background:var(--accentSoft);color:var(--accent2);font-weight:750}
+.change-board{padding:17px 18px;margin:0 0 14px;background:var(--surface);border:1px solid var(--line);border-radius:15px;box-shadow:0 8px 28px rgba(31,45,39,.04)}
+.change-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:13px}
+.change-head h2{margin:2px 0 0;font-family:Georgia,"Songti SC","SimSun",serif;font-size:20px;font-weight:500;letter-spacing:-.025em}
+.change-kicker{color:var(--accent);font-size:9px;font-weight:850;letter-spacing:.15em;text-transform:uppercase}
+.change-summary{color:var(--muted);font-size:10px;white-space:nowrap}
+.change-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.change-card{border:1px solid var(--line);border-radius:12px;background:var(--surface2);padding:12px;min-width:0;display:flex;flex-direction:column;gap:8px}
+.change-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.change-badge{border-radius:999px;padding:3px 7px;background:var(--accentSoft);color:var(--accent2);font-size:9px;font-weight:800}
+.change-badge.high{background:#fde8e3;color:#a6472d}
+.change-date{color:var(--muted);font-size:9px;white-space:nowrap}
+.change-title{margin:0;font-size:12px;line-height:1.45;font-weight:780}
+.change-meta{color:var(--muted);font-size:9px;line-height:1.5}
+.change-card p{margin:0;color:var(--muted);font-size:10px;line-height:1.6;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.change-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:auto;padding-top:7px;border-top:1px solid var(--line);color:var(--muted);font-size:9px}
+.change-foot a{color:var(--accent2);font-weight:750;text-decoration:none}
+.change-foot a:hover{text-decoration:underline}
 .feed-context{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 8px}
 .meta-pill{border:1px solid var(--line);border-radius:999px;padding:2px 7px;color:var(--muted);font-size:9px}
 .meta-pill.audience{color:var(--accent2);background:var(--accentSoft);border-color:transparent}
@@ -192,6 +209,8 @@
 .exam-list{margin:7px 0 0;padding-left:18px;color:var(--muted);font-size:11px;line-height:1.7}
 .official-note{margin:6px 0 0;padding:9px 10px;border-left:2px solid var(--accent);background:var(--surface2);color:var(--muted);font-size:10px;line-height:1.7}
 @media(max-width:520px){.official-grid{grid-template-columns:1fr}}
+@media(max-width:900px){.change-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.change-head{align-items:flex-start;flex-direction:column}.change-summary{white-space:normal}.change-grid{grid-template-columns:1fr}}
 
 [hidden]{display:none!important}
 </style>
@@ -236,6 +255,7 @@
       </div>
       <div class="radar-stats">
         <span class="radar-stat"><b id="statItems">0</b> 条研究动态</span>
+        <span class="radar-stat"><b id="statChanges">0</b> 条招生变化</span>
         <span class="radar-stat"><b>5</b> 篇论文可追问</span>
         <span class="radar-stat"><b>3</b> 个升学阶段</span>
         <span class="radar-stat"><b>24h</b> 自动清理</span>
@@ -248,6 +268,10 @@
       <button class="stage-btn" type="button" data-stage="大三">大三 · 保研准备</button>
       <button class="stage-btn" type="button" data-stage="大四">大四 · 复试准备</button>
       <button class="stage-btn" type="button" data-stage="研0">研0 · 科研入门</button>
+    </section>
+    <section class="change-board" id="changeBoard" hidden aria-label="最近招生变化">
+      <div class="change-head"><div><div class="change-kicker">Verified admissions changes</div><h2>最近招生变化</h2></div><span class="change-summary" id="changeSummary"></span></div>
+      <div class="change-grid" id="changeGrid"></div>
     </section>
     <section class="radar-toolbar" aria-label="搜索与筛选">
       <label class="radar-search"><span>⌕</span><input id="radarSearch" type="search" placeholder="搜索论文、复试、保研信息"></label>
@@ -338,6 +362,7 @@ $('examples').addEventListener('click',e=>{const b=e.target.closest('[data-quest
 
 /* ---------- Research Radar interactions ---------- */
 let radarItems=[];
+let radarChanges=[];
 let radarFilter='featured';
 let radarQuery='';
 let radarStage=localStorage.getItem('litrag_radar_stage')||'all';
@@ -418,6 +443,15 @@ function renderRadar(){
   const picks=radarItems.filter(item=>item.featured).slice(0,3);
   $('sidePicks').innerHTML=picks.map(item=>`<button class="side-item" type="button" data-open="${escapeRadar(item.id)}"><div class="side-item-title">${escapeRadar(item.title)}</div><div class="side-item-meta">适合 ${escapeRadar((item.audiences||[]).join('/'))} · ${escapeRadar(item.difficulty||'入门')} · ${escapeRadar(item.signal||radarCategoryLabel(item.category_key))}</div></button>`).join('');
 }
+function changeTypeLabel(type){return ({catalog_published:'目录发布',direction_added:'新增方向',plan_changed:'计划调整',exam_changed:'科目调整',quota_changed:'名额调整',direction_updated:'方向更新',notes_changed:'说明更新',admission_updated:'信息更新'}[type]||'招生变化')}
+function renderChanges(){
+  const board=$('changeBoard'),grid=$('changeGrid');radarChanges=Array.isArray(radarChanges)?radarChanges:[];
+  $('statChanges').textContent=radarChanges.length;
+  if(!radarChanges.length){board.hidden=true;return}
+  board.hidden=false;
+  const latest=radarChanges[0];$('changeSummary').textContent=`${radarChanges.length} 条已核验变化 · 最近 ${latest.feed_date||''} ${latest.feed_time||''}`;
+  grid.innerHTML=radarChanges.slice(0,6).map(item=>`<article class="change-card"><div class="change-card-top"><span class="change-badge ${item.severity==='high'?'high':''}">${escapeRadar(changeTypeLabel(item.event_type))}</span><span class="change-date">${escapeRadar((item.feed_date||'').slice(5).replace('-',' / '))} ${escapeRadar(item.feed_time||'')}</span></div><h3 class="change-title">${escapeRadar(item.title)}</h3><div class="change-meta">${escapeRadar(item.school||'')} · ${escapeRadar(item.college||'')} · ${escapeRadar(item.major_code||'')} / ${escapeRadar(item.direction_code||'')}</div><p>${escapeRadar(item.summary)}</p><div class="change-foot"><span>官方已核验</span>${item.source_url?`<a href="${escapeRadar(item.source_url)}" target="_blank" rel="noopener">查看官方原文 ↗</a>`:''}</div></article>`).join('');
+}
 function markRadarRead(id){if(radarRead.has(id))return;radarRead.add(id);saveRadarSet(RADAR_READ_KEY,radarRead);renderRadar()}
 function toggleRadarSaved(id){if(radarSaved.has(id))radarSaved.delete(id);else radarSaved.add(id);saveRadarSet(RADAR_SAVED_KEY,radarSaved);renderRadar();toast(radarSaved.has(id)?'已加入收藏':'已取消收藏')}
 function openRadarDrawer(id){
@@ -454,6 +488,9 @@ async function askFromRadar(id){
 async function loadRadar(){
   try{const r=await fetch('/api/radar');const data=await r.json();if(!r.ok||data.error)throw new Error(data.error||`HTTP ${r.status}`);radarItems=Array.isArray(data.items)?data.items:[];renderRadar()}catch(error){radarFeedEl.innerHTML=`<div class="radar-empty">研究雷达加载失败：${escapeRadar(error.message)}</div>`}
 }
+async function loadChanges(){
+  try{const r=await fetch('/api/changes');const data=await r.json();if(!r.ok||data.error)throw new Error(data.error||`HTTP ${r.status}`);radarChanges=Array.isArray(data.items)?data.items:[];renderChanges()}catch(error){$('changeBoard').hidden=true;$('statChanges').textContent='0'}
+}
 document.addEventListener('click',event=>{
   const view=event.target.closest('[data-view]');if(view){event.preventDefault();switchView(view.dataset.view);return}
   const stage=event.target.closest('[data-stage]');if(stage){radarStage=stage.dataset.stage;localStorage.setItem('litrag_radar_stage',radarStage);renderRadar();return}
@@ -483,6 +520,7 @@ $('themeToggle').addEventListener('click',()=>applyTheme(document.documentElemen
 const savedTheme=localStorage.getItem(RADAR_THEME_KEY)||'light';applyTheme(savedTheme);
 const now=new Date();$('radarDay').textContent=String(now.getDate()).padStart(2,'0');$('radarMonth').textContent=`${now.getFullYear()} 年 ${now.getMonth()+1} 月`;
 loadRadar();
+loadChanges();
 loadSchools();
 if(location.hash==='#workspace')switchView('workspace');else switchView('radar');
 </script>

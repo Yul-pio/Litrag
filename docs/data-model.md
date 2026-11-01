@@ -135,6 +135,39 @@ schools.json
 
 合并成前端信息流。
 
+### `data/change_events.json`
+
+保存审核通过后生成的招生变化。首页 `/api/changes` 只返回
+`user_visible=true` 的事件。
+
+关键字段：
+
+```text
+id
+event_type
+change_types
+severity
+user_visible
+school_id
+college
+major_code
+direction_code
+program_id
+admission_id
+title
+summary
+changes[]
+source_url
+page_location
+feed_date
+feed_time
+verified_at
+```
+
+当前事件类型包括：`catalog_published`、`direction_added`、`plan_changed`、
+`exam_changed`、`quota_changed`、`direction_updated`、`notes_changed`。
+纯招生说明修正默认不进入公开信息流，但仍保留在事件数据和审计日志中。
+
 ## 发布规则
 
 - `draft`：采集或人工录入，不进入首页。

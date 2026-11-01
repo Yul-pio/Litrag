@@ -13,6 +13,7 @@ from copy import deepcopy
 import json
 import os
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -26,7 +27,7 @@ from litrag.chunker import chunk_document
 from litrag.evaluate import run_refusal_eval
 from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
-from litrag import admin, service
+from litrag import admin, change_events, service
 from scripts.collectors.pku import collect_pku_catalog
 from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
@@ -268,6 +269,55 @@ class TestCandidateReview(unittest.TestCase):
         self.assertEqual(report["items"][0]["risk"], "none")
 
 
+class TestChangeEvents(unittest.TestCase):
+    def test_new_direction_event_is_user_visible(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        candidate = next(
+            item for item in collect_tsinghua_catalog(
+                year=2027, html=html, college_filter="计算机科学与技术系"
+            )["items"]
+            if item["program"]["direction_code"] == "03"
+        )
+        admissions = json.loads((ROOT / "data" / "admission_records.json").read_text(encoding="utf-8"))
+        admission = next(item for item in admissions if item["id"] == "thu-cs-2027-catalog")
+
+        events = change_events.build_change_events(
+            None,
+            candidate["program"],
+            admission,
+            event_time=datetime(2026, 11, 1, 10, 30, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0]["event_type"], "direction_added")
+        self.assertTrue(events[0]["user_visible"])
+        self.assertEqual(events[0]["program_id"], "thu-2027-024-085400-03-program")
+        self.assertEqual(events[0]["admission_id"], "thu-cs-2027-catalog")
+
+    def test_notes_only_change_stays_out_of_public_feed(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        candidate = next(
+            item for item in collect_tsinghua_catalog(
+                year=2027, html=html, college_filter="计算机科学与技术系"
+            )["items"]
+            if item["program"]["direction_code"] == "01"
+        )
+        programs = json.loads((ROOT / "data" / "programs.json").read_text(encoding="utf-8"))
+        old_program = next(item for item in programs if item["id"] == "thu-cs-2027-085400-01")
+        admissions = json.loads((ROOT / "data" / "admission_records.json").read_text(encoding="utf-8"))
+        admission = next(item for item in admissions if item["id"] == "thu-cs-2027-catalog")
+
+        events = change_events.build_change_events(
+            old_program,
+            candidate["program"],
+            admission,
+            event_time=datetime(2026, 11, 1, 10, 30, tzinfo=timezone.utc),
+        )
+
+        self.assertEqual(events[0]["event_type"], "notes_changed")
+        self.assertFalse(events[0]["user_visible"])
+
+
 class TestAdminReview(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -277,6 +327,7 @@ class TestAdminReview(unittest.TestCase):
         self.admissions_path = root / "admission_records.json"
         self.pending_dir = root / "candidates" / "pending"
         self.audit_path = root / "candidates" / "review_audit.jsonl"
+        self.change_events_path = root / "change_events.json"
         self.programs_path.write_text(
             (ROOT / "data" / "programs.json").read_text(encoding="utf-8"),
             encoding="utf-8",
@@ -291,6 +342,7 @@ class TestAdminReview(unittest.TestCase):
             patch.object(admin, "ADMISSIONS_PATH", self.admissions_path),
             patch.object(admin, "PENDING_DIR", self.pending_dir),
             patch.object(admin, "AUDIT_PATH", self.audit_path),
+            patch.object(admin, "CHANGE_EVENTS_PATH", self.change_events_path),
             patch.dict(os.environ, {"LITRAG_ADMIN_TOKEN": self.token}),
         ]
         for item in self.patches:
@@ -370,6 +422,11 @@ class TestAdminReview(unittest.TestCase):
         self.assertEqual(pending["summary"]["candidate_count"], 1)
         audit = [json.loads(line) for line in self.audit_path.read_text(encoding="utf-8").splitlines()]
         self.assertEqual(audit[-1]["action"], "approve")
+        change_events_data = json.loads(self.change_events_path.read_text(encoding="utf-8"))
+        self.assertTrue(any(
+            item["program_id"] == program_id and item["event_type"] == "direction_added"
+            for item in change_events_data
+        ))
 
     def test_admin_requires_override_for_existing_direction(self):
         html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
@@ -411,6 +468,8 @@ class TestAdminReview(unittest.TestCase):
         programs = json.loads(self.programs_path.read_text(encoding="utf-8"))
         program = next(item for item in programs if item["id"] == "thu-cs-2027-085400-01")
         self.assertEqual(program["notes"], "")
+        change_events_data = json.loads(self.change_events_path.read_text(encoding="utf-8"))
+        self.assertTrue(any(item["event_type"] == "notes_changed" and not item["user_visible"] for item in change_events_data))
 
 
 class TestRadar(unittest.TestCase):
@@ -444,6 +503,13 @@ class TestRadar(unittest.TestCase):
         self.assertEqual(programs["count"], 3)
         self.assertEqual(records["count"], 3)
         self.assertTrue(all(item.get("source_url") for item in records["items"]))
+
+    def test_verified_change_events_are_available(self):
+        data = service.list_change_events()
+        self.assertGreaterEqual(data["count"], 3)
+        self.assertTrue(all(item.get("user_visible", True) for item in data["items"]))
+        self.assertTrue(all(item.get("school") and item.get("source") for item in data["items"]))
+        self.assertEqual(data["items"][0]["feed_date"], "2026-10-31")
 
 
 class TestEndToEnd(unittest.TestCase):

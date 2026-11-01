@@ -20,6 +20,7 @@ FILES = {
     "programs": DATA / "programs.json",
     "admissions": DATA / "admission_records.json",
     "radar": DATA / "radar_items.json",
+    "changes": DATA / "change_events.json",
 }
 
 
@@ -41,6 +42,7 @@ def main() -> int:
         programs = load("programs")
         admissions = load("admissions")
         radar = load("radar")
+        changes = load("changes")
     except Exception as exc:
         print(f"校验失败：{exc}")
         return 1
@@ -62,6 +64,7 @@ def main() -> int:
     program_map = unique(programs, "programs")
     record_map = unique(admissions, "admission_records")
     unique(radar, "radar_items")
+    unique(changes, "change_events")
 
     for source in sources:
         if source.get("school_id") not in school_map:
@@ -91,7 +94,27 @@ def main() -> int:
             if program_id not in program_map:
                 errors.append(f"record {record.get('id')} 引用了不存在的 program_id {program_id}")
 
-    print(f"schools={len(schools)} sources={len(sources)} programs={len(programs)} admissions={len(admissions)} radar={len(radar)}")
+    for change in changes:
+        if change.get("school_id") not in school_map:
+            errors.append(f"change {change.get('id')} 引用了不存在的 school_id")
+        if change.get("source_id") not in source_map:
+            errors.append(f"change {change.get('id')} 引用了不存在的 source_id")
+        if change.get("program_id") and change.get("program_id") not in program_map:
+            errors.append(f"change {change.get('id')} 引用了不存在的 program_id")
+        if change.get("admission_id") and change.get("admission_id") not in record_map:
+            errors.append(f"change {change.get('id')} 引用了不存在的 admission_id")
+        if not change.get("feed_date"):
+            errors.append(f"change {change.get('id')} 缺少 feed_date")
+        if change.get("event_type") not in {
+            "catalog_published", "direction_added", "exam_changed", "plan_changed",
+            "quota_changed", "direction_updated", "notes_changed", "admission_updated",
+        }:
+            errors.append(f"change {change.get('id')} event_type 非法")
+
+    print(
+        f"schools={len(schools)} sources={len(sources)} programs={len(programs)} "
+        f"admissions={len(admissions)} radar={len(radar)} changes={len(changes)}"
+    )
     if errors:
         print("\n发现问题：")
         for error in errors:
