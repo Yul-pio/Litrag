@@ -17,6 +17,8 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -44,37 +46,55 @@ def load_manifest() -> list[dict]:
     return papers
 
 
-def download(arxiv_id: str, title: str) -> bool:
+def _pdf_urls(arxiv_id: str) -> list[str]:
+    return [
+        f"https://arxiv.org/pdf/{arxiv_id}.pdf",
+        f"https://export.arxiv.org/pdf/{arxiv_id}.pdf",
+    ]
+
+
+def download(arxiv_id: str, title: str, timeout: int = 45, retry: int = 2) -> bool:
     dest = OUT_DIR / f"{arxiv_id}.pdf"
     if dest.exists() and dest.stat().st_size > 10_000:
         print(f"跳过（已存在） {dest.name}")
         return True
 
-    url = f"https://arxiv.org/pdf/{arxiv_id}"
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "litrag/0.1 (academic reading assistant)"}
-    )
+    last_error = ""
+    for url in _pdf_urls(arxiv_id):
+        for attempt in range(1, retry + 1):
+            request = urllib.request.Request(
+                url,
+                headers={
+                    "User-Agent": "litrag/0.2 (academic reading assistant; github.com/Yul-pio/litrag)",
+                    "Accept": "application/pdf,*/*;q=0.8",
+                },
+            )
+            try:
+                with urllib.request.urlopen(request, timeout=timeout) as response:
+                    data = response.read()
+                if not data.startswith(b"%PDF") or len(data) < 10_000:
+                    raise ValueError("返回内容不是有效 PDF")
+                dest.write_bytes(data)
+                print(f"✓ {dest.name:20s} {len(data) / 1024:7.0f} KB  {title}")
+                return True
+            except urllib.error.HTTPError as exc:
+                last_error = f"HTTP {exc.code} {exc.reason}"
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+            print(f"  重试 {arxiv_id} {attempt}/{retry}：{url} · {last_error}")
+            time.sleep(min(attempt * 2, 5))
 
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            data = response.read()
-    except Exception as exc:  # 网络不通、超时、404 都会到这里
-        print(f"✗ {arxiv_id} 下载失败：{exc}")
-        return False
-
-    if not data.startswith(b"%PDF"):
-        print(f"✗ {arxiv_id} 返回的不是 PDF（可能被重定向到网页）")
-        return False
-
-    dest.write_bytes(data)
-    print(f"✓ {dest.name:20s} {len(data) / 1024:7.0f} KB  {title}")
-    return True
+    print(f"✗ {arxiv_id} 下载失败：{last_error}")
+    return False
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="下载 arXiv 论文到 data/papers/")
     parser.add_argument("--ids", nargs="+", help="指定 arXiv 编号")
     parser.add_argument("--list", action="store_true", help="只列出默认清单")
+    parser.add_argument("--timeout", type=int, default=45)
+    parser.add_argument("--retry", type=int, default=2)
+    parser.add_argument("--delay", type=float, default=1.5, help="每次下载之间的等待秒数")
     args = parser.parse_args()
 
     if args.list:
@@ -98,8 +118,9 @@ def main() -> None:
 
     ok = 0
     for arxiv_id, item in targets.items():
-        if download(arxiv_id, item.get("title", "")):
+        if download(arxiv_id, item.get("title", ""), timeout=args.timeout, retry=args.retry):
             ok += 1
+        time.sleep(max(args.delay, 0))
 
     print(f"\n完成 {ok}/{len(targets)}")
     if ok:

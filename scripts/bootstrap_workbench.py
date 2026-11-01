@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +41,14 @@ def main() -> int:
         for item in manifest:
             if download(item["id"], item["title"]):
                 downloaded += 1
+            time.sleep(1.5)
         print(f"演示论文可用：{downloaded}/{len(manifest)}")
+        if downloaded == 0:
+            print(
+                "没有成功获得任何精选论文。请先运行单篇诊断：\n"
+                "  python scripts/fetch_papers.py --ids 2312.10997 --retry 1",
+                file=sys.stderr,
+            )
 
     docs = load_dir(ROOT / "data")
     if not docs:
