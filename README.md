@@ -76,6 +76,9 @@ python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2
 内部审核后台的启动、令牌配置和审核流程见
 [docs/admin-review.md](docs/admin-review.md)。
 
+完整产品路线、当前完成度、最终效果和日常运营方式见
+[docs/product-roadmap-and-operating-guide.md](docs/product-roadmap-and-operating-guide.md)。
+
 ### 处理你自己的 PDF
 
 ```bash
