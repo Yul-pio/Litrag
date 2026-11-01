@@ -59,6 +59,9 @@ python scripts/sweep_threshold.py       # 拒答阈值权衡
 # 4. 网页版
 python app.py            # http://127.0.0.1:8000
 
+# 内部招生审核台（需先设置 LITRAG_ADMIN_TOKEN）
+# http://127.0.0.1:8000/admin
+
 # 5. 测试
 python -m unittest discover -s tests -v
 python scripts/validate_content.py
@@ -67,6 +70,9 @@ python scripts/collect_candidates.py --school tsinghua --year 2027 --college 计
 python scripts/review_candidates.py --candidate-file data/candidates/tsinghua_2027_catalog.json
 python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2027_catalog.json --candidate-id <candidate_id>
 ```
+
+内部审核后台的启动、令牌配置和审核流程见
+[docs/admin-review.md](docs/admin-review.md)。
 
 ### 处理你自己的 PDF
 

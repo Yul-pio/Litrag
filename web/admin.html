@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>litrag · 招生审核台</title>
+  <style>
+    :root {
+      --bg: #f3f5f2;
+      --paper: #ffffff;
+      --ink: #17201b;
+      --muted: #68736c;
+      --line: #dfe5df;
+      --green: #126b45;
+      --green-soft: #e6f3eb;
+      --lime: #c9f36b;
+      --amber: #9a5b0b;
+      --amber-soft: #fff1d6;
+      --red: #a43030;
+      --red-soft: #fde8e7;
+      --blue: #285b9a;
+      --blue-soft: #e8f0fb;
+      --shadow: 0 20px 60px rgba(25, 43, 32, .12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 5%, rgba(201, 243, 107, .36), transparent 27rem),
+        linear-gradient(180deg, #f7f9f5 0%, var(--bg) 100%);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+      min-height: 100vh;
+    }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+    .shell { width: min(1240px, calc(100% - 40px)); margin: 0 auto; }
+    .login-shell { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .login-card {
+      width: min(520px, 100%);
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      padding: 38px;
+      box-shadow: var(--shadow);
+    }
+    .brand-mark {
+      width: 46px; height: 46px; border-radius: 14px;
+      display: grid; place-items: center;
+      background: var(--ink); color: var(--lime);
+      font-weight: 800; letter-spacing: -.06em;
+    }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { font-size: 34px; line-height: 1.15; letter-spacing: -.04em; margin: 20px 0 10px; }
+    h2 { font-size: 22px; letter-spacing: -.025em; margin-bottom: 8px; }
+    h3 { font-size: 16px; margin-bottom: 6px; }
+    .muted { color: var(--muted); }
+    .login-card p { line-height: 1.65; }
+    .field { display: grid; gap: 8px; }
+    .field label { font-size: 13px; font-weight: 750; }
+    .input, .textarea, .select {
+      width: 100%; border: 1px solid #cfd8d0; border-radius: 12px;
+      background: #fbfcfa; color: var(--ink); padding: 11px 13px; outline: none;
+      transition: border-color .15s, box-shadow .15s, background .15s;
+    }
+    .input:focus, .textarea:focus, .select:focus {
+      border-color: var(--green); background: #fff;
+      box-shadow: 0 0 0 4px rgba(18, 107, 69, .10);
+    }
+    .textarea { min-height: 92px; resize: vertical; line-height: 1.55; }
+    .login-form { display: grid; gap: 14px; margin-top: 26px; }
+    .btn {
+      border: 1px solid transparent; border-radius: 12px; padding: 10px 15px;
+      font-weight: 750; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      transition: transform .15s, box-shadow .15s, background .15s;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:disabled { opacity: .48; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--ink); color: #fff; box-shadow: 0 8px 20px rgba(23, 32, 27, .16); }
+    .btn-primary:hover { background: #25352c; }
+    .btn-approve { background: var(--green); color: #fff; }
+    .btn-reject { background: var(--red-soft); color: var(--red); }
+    .btn-ghost { background: #fff; border-color: var(--line); color: var(--ink); }
+    .login-error { min-height: 20px; color: var(--red); font-size: 13px; }
+    .topbar {
+      position: sticky; top: 0; z-index: 20;
+      backdrop-filter: blur(18px); background: rgba(247, 249, 245, .88);
+      border-bottom: 1px solid rgba(205, 215, 207, .8);
+    }
+    .topbar-inner { height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand-line { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.02em; }
+    .top-actions { display: flex; gap: 10px; align-items: center; }
+    .main { padding: 42px 0 80px; }
+    .hero { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; margin-bottom: 30px; }
+    .hero h1 { margin: 8px 0 12px; font-size: clamp(32px, 5vw, 54px); }
+    .hero p { max-width: 720px; margin-bottom: 0; line-height: 1.7; }
+    .hero-note {
+      border-left: 3px solid var(--green); padding-left: 14px; color: var(--muted);
+      font-size: 13px; line-height: 1.6; max-width: 290px;
+    }
+    .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat {
+      background: rgba(255,255,255,.78); border: 1px solid var(--line); border-radius: 18px; padding: 17px 18px;
+    }
+    .stat-label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .stat-value { font-size: 30px; font-weight: 850; letter-spacing: -.05em; margin-top: 5px; }
+    .panel {
+      background: var(--paper); border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 12px 36px rgba(25, 43, 32, .06);
+    }
+    .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+    .panel-head p { margin: 4px 0 0; font-size: 13px; }
+    .upload-line { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .upload-line input[type=file] { max-width: 280px; font-size: 13px; }
+    .queue { display: grid; }
+    .queue-file { border-bottom: 1px solid var(--line); }
+    .queue-file:last-child { border-bottom: 0; }
+    .file-head { padding: 16px 24px 10px; display: flex; justify-content: space-between; gap: 16px; background: #fafbf9; }
+    .file-name { font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
+    .file-meta { color: var(--muted); font-size: 11px; margin-top: 3px; }
+    .candidate {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 20px; align-items: center;
+      padding: 18px 24px; transition: background .15s;
+    }
+    .candidate:hover { background: #f8fbf8; }
+    .candidate-title { font-weight: 750; margin-bottom: 5px; line-height: 1.45; }
+    .candidate-meta { color: var(--muted); font-size: 12px; display: flex; flex-wrap: wrap; gap: 7px 14px; }
+    .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 9px; }
+    .badge {
+      display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 9px;
+      font-size: 11px; font-weight: 800; line-height: 1;
+    }
+    .badge-new { background: var(--green-soft); color: var(--green); }
+    .badge-changed { background: var(--amber-soft); color: var(--amber); }
+    .badge-unchanged { background: #edf0ed; color: #566158; }
+    .badge-high { background: var(--red-soft); color: var(--red); }
+    .badge-medium { background: var(--amber-soft); color: var(--amber); }
+    .badge-low { background: var(--blue-soft); color: var(--blue); }
+    .badge-doc { background: #ece9fb; color: #5b44a0; }
+    .empty { padding: 48px 24px; text-align: center; color: var(--muted); }
+    .audit { margin-top: 22px; }
+    .audit-list { padding: 8px 24px 20px; display: grid; }
+    .audit-row { display: grid; grid-template-columns: 150px 90px minmax(0, 1fr); gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .audit-row:last-child { border-bottom: 0; }
+    .audit-at { color: var(--muted); }
+    .audit-action { font-weight: 800; }
+    .drawer-backdrop {
+      position: fixed; inset: 0; z-index: 50; background: rgba(12, 21, 15, .42);
+      backdrop-filter: blur(4px);
+    }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; z-index: 60; width: min(760px, 96vw);
+      background: var(--paper); box-shadow: -20px 0 60px rgba(0,0,0,.18);
+      display: flex; flex-direction: column;
+    }
+    .drawer-head { padding: 24px 28px 18px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; gap: 20px; }
+    .drawer-head h2 { margin: 8px 0 0; font-size: 24px; line-height: 1.35; }
+    .drawer-body { overflow-y: auto; padding: 24px 28px 32px; }
+    .drawer-foot { padding: 16px 28px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; background: #fbfcfa; }
+    .close-btn { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: #fff; font-size: 20px; color: var(--muted); }
+    .notice { border-radius: 14px; padding: 13px 15px; font-size: 13px; line-height: 1.55; margin-bottom: 18px; background: var(--green-soft); color: var(--green); }
+    .notice.warning { background: var(--amber-soft); color: var(--amber); }
+    .changes { display: grid; gap: 8px; margin: 10px 0 22px; }
+    .change-row { border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px; display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; font-size: 12px; }
+    .change-level { font-weight: 850; }
+    .change-level.high { color: var(--red); }
+    .change-level.medium { color: var(--amber); }
+    .change-level.low { color: var(--blue); }
+    .change-main strong { display: block; margin-bottom: 4px; }
+    .change-values { color: var(--muted); overflow-wrap: anywhere; line-height: 1.5; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .span-2 { grid-column: span 2; }
+    .section-title { font-size: 12px; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; color: var(--green); margin: 24px 0 12px; }
+    .checkbox-row { display: flex; gap: 10px; align-items: flex-start; padding: 14px; border: 1px solid #efcf9e; background: #fff8eb; border-radius: 13px; margin-top: 16px; font-size: 13px; line-height: 1.5; }
+    .checkbox-row input { margin-top: 3px; width: 17px; height: 17px; }
+    details { margin-top: 18px; border: 1px solid var(--line); border-radius: 13px; padding: 12px 14px; }
+    summary { cursor: pointer; font-weight: 750; font-size: 13px; }
+    pre.json { margin: 12px 0 0; max-height: 320px; overflow: auto; background: #f5f7f4; border-radius: 10px; padding: 12px; font-size: 11px; line-height: 1.55; white-space: pre-wrap; }
+    .toast {
+      position: fixed; left: 50%; bottom: 28px; z-index: 100; transform: translateX(-50%) translateY(20px);
+      background: var(--ink); color: #fff; border-radius: 14px; padding: 12px 18px; box-shadow: var(--shadow);
+      opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: min(680px, calc(100vw - 32px));
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.error { background: var(--red); }
+    @media (max-width: 900px) {
+      .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { align-items: flex-start; flex-direction: column; }
+      .hero-note { max-width: none; }
+    }
+    @media (max-width: 640px) {
+      .shell { width: min(100% - 24px, 1240px); }
+      .topbar-inner { height: 64px; }
+      .main { padding-top: 28px; }
+      .stats { grid-template-columns: 1fr 1fr; }
+      .panel-head, .file-head, .candidate { padding-left: 16px; padding-right: 16px; }
+      .candidate { grid-template-columns: 1fr; }
+      .candidate .btn { width: 100%; }
+      .form-grid { grid-template-columns: 1fr; }
+      .span-2 { grid-column: auto; }
+      .drawer-head, .drawer-body, .drawer-foot { padding-left: 18px; padding-right: 18px; }
+      .drawer-foot { flex-direction: column-reverse; }
+      .drawer-foot .btn { width: 100%; }
+      .audit-row { grid-template-columns: 1fr; gap: 4px; }
+      .login-card { padding: 26px; border-radius: 22px; }
+    }
+  </style>
+</head>
+<body>
+  <section id="loginView" class="login-shell">
+    <div class="login-card">
+      <div class="brand-mark">lr</div>
+      <div class="eyebrow" style="margin-top:20px">Internal review</div>
+      <h1>招生审核台</h1>
+      <p class="muted">这里负责把自动抓取的候选与正式招生数据对比。确认后才会写入正式库，所有审核动作都会留下记录。</p>
+      <form id="loginForm" class="login-form">
+        <div class="field">
+          <label for="tokenInput">管理员令牌</label>
+          <input id="tokenInput" class="input" type="password" autocomplete="current-password" placeholder="LITRAG_ADMIN_TOKEN" required>
+        </div>
+        <button class="btn btn-primary" type="submit">进入审核台</button>
+        <div id="loginError" class="login-error"></div>
+      </form>
+    </div>
+  </section>
+
+  <div id="appView" hidden>
+    <header class="topbar">
+      <div class="shell topbar-inner">
+        <div class="brand-line"><span class="brand-mark" style="width:36px;height:36px;border-radius:11px;font-size:13px">lr</span> litrag / 招生审核台</div>
+        <div class="top-actions">
+          <button id="refreshBtn" class="btn btn-ghost" type="button">刷新</button>
+          <button id="logoutBtn" class="btn btn-ghost" type="button">退出</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="shell main">
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Official-source review</div>
+          <h1>先看差异，再决定发布。</h1>
+          <p class="muted">自动抓取只负责发现候选。这里逐项核对计划数、考试科目、方向和官方来源；通过后自动写入正式数据并生成首页信息流。</p>
+        </div>
+        <div class="hero-note">高风险字段不会被静默覆盖。已存在的方向需要单独勾选“覆盖”，新方向则追加到原招生文档。</div>
+      </section>
+
+      <section class="stats">
+        <div class="stat"><div class="stat-label">待审核方向</div><div id="statTotal" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">新增</div><div id="statNew" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">变更</div><div id="statChanged" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">未变</div><div id="statUnchanged" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">高风险</div><div id="statHigh" class="stat-value">0</div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head">
+          <div><h2>待审核队列</h2><p class="muted">上传 GitHub Actions 下载的候选 JSON，或使用本地采集产物。</p></div>
+          <div class="upload-line">
+            <input id="fileInput" type="file" accept="application/json,.json">
+            <button id="uploadBtn" class="btn btn-primary" type="button">上传候选</button>
+          </div>
+        </div>
+        <div id="queue" class="queue"></div>
+      </section>
+
+      <section class="panel audit">
+        <div class="panel-head"><div><h2>最近审核</h2><p class="muted">通过和拒绝都会写入本地审计日志。</p></div></div>
+        <div id="auditList" class="audit-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="drawer" class="drawer" hidden aria-modal="true" role="dialog">
+    <div class="drawer-head">
+      <div><div id="drawerEyebrow" class="eyebrow">Review candidate</div><h2 id="drawerTitle">审核候选</h2></div>
+      <button id="closeDrawer" class="close-btn" type="button" aria-label="关闭">×</button>
+    </div>
+    <div id="drawerBody" class="drawer-body"></div>
+    <div class="drawer-foot">
+      <button id="rejectBtn" class="btn btn-reject" type="button">拒绝</button>
+      <button id="approveBtn" class="btn btn-approve" type="submit" form="reviewForm">核验通过并发布</button>
+    </div>
+  </aside>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    const TOKEN_KEY = "litrag_admin_token";
+    const state = { token: sessionStorage.getItem(TOKEN_KEY) || "", data: null, selected: null };
+    const $ = (id) => document.getElementById(id);
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    function statusBadge(status) {
+      const map = { new: ["新增", "badge-new"], changed: ["变更", "badge-changed"], unchanged: ["未变", "badge-unchanged"], error: ["错误", "badge-high"] };
+      const [label, cls] = map[status] || [status, "badge-unchanged"];
+      return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
+    }
+
+    function riskBadge(risk) {
+      if (!risk || risk === "none") return "";
+      const map = { high: ["高风险", "badge-high"], medium: ["中风险", "badge-medium"], low: ["低风险", "badge-low"] };
+      const [label, cls] = map[risk] || [risk, "badge-unchanged"];
+      return `<span class="badge ${cls}">${escapeHtml(label)}</span>`;
+    }
+
+    function showToast(message, error = false) {
+      const toast = $("toast");
+      toast.textContent = message;
+      toast.className = `toast show${error ? " error" : ""}`;
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => { toast.className = "toast"; }, 4200);
+    }
+
+    async function api(path, options = {}) {
+      const headers = new Headers(options.headers || {});
+      headers.set("X-Admin-Token", state.token);
+      const response = await fetch(path, { ...options, headers });
+      let payload = {};
+      try { payload = await response.json(); } catch (_) { payload = {}; }
+      if (!response.ok) {
+        if (response.status === 401) showLogin("管理员令牌无效或已过期");
+        throw new Error(payload.error || `请求失败（${response.status}）`);
+      }
+      return payload;
+    }
+
+    function showLogin(message = "") {
+      $("appView").hidden = true;
+      $("loginView").hidden = false;
+      $("loginError").textContent = message;
+    }
+
+    function showApp() {
+      $("loginView").hidden = true;
+      $("appView").hidden = false;
+    }
+
+    async function checkStatus() {
+      const response = await fetch("/api/admin/status");
+      const data = await response.json();
+      if (!data.configured) {
+        showLogin("服务端还没有配置 LITRAG_ADMIN_TOKEN（至少 12 位）");
+        return false;
+      }
+      return true;
+    }
+
+    async function loadData() {
+      if (!state.token) { showLogin(); return; }
+      try {
+        if (!(await checkStatus())) return;
+        state.data = await api("/api/admin/pending");
+        showApp();
+        render();
+      } catch (error) {
+        showLogin(error.message);
+      }
+    }
+
+    function render() {
+      const summary = state.data?.summary || {};
+      $("statTotal").textContent = summary.candidate_count || 0;
+      $("statNew").textContent = summary.new || 0;
+      $("statChanged").textContent = summary.changed || 0;
+      $("statUnchanged").textContent = summary.unchanged || 0;
+      $("statHigh").textContent = summary.high_risk || 0;
+      renderQueue();
+      renderAudit();
+    }
+
+    function renderQueue() {
+      const queue = state.data?.queue || [];
+      if (!queue.length) {
+        $("queue").innerHTML = `<div class="empty"><h3>队列是空的</h3><p>上传候选 JSON 后，这里会出现需要核对的方向。</p></div>`;
+        return;
+      }
+      $("queue").innerHTML = queue.map((file) => {
+        if (file.error) {
+          return `<section class="queue-file"><div class="file-head"><div><div class="file-name">${escapeHtml(file.filename)}</div><div class="file-meta">${escapeHtml(file.uploaded_at || "")}</div></div>${statusBadge("error")}</div><div class="empty">${escapeHtml(file.error)}</div></section>`;
+        }
+        const items = (file.items || []).map((item, index) => `
+          <article class="candidate">
+            <div>
+              <div class="candidate-title">${escapeHtml(item.candidate?.title || item.candidate_id)}</div>
+              <div class="candidate-meta">
+                <span>${escapeHtml(item.school_id || "")}</span>
+                <span>${escapeHtml(item.college || "")}</span>
+                <span>${escapeHtml(item.candidate?.program?.major_code || "-")} / ${escapeHtml(item.candidate?.program?.direction_code || "-")}</span>
+                <span>${escapeHtml(item.candidate?.program?.direction_name || "")}</span>
+              </div>
+              <div class="badges">${statusBadge(item.status)}${riskBadge(item.risk)}${item.existing_document ? '<span class="badge badge-doc">复用已有招生文档</span>' : ''}</div>
+            </div>
+            <button class="btn btn-ghost review-open" data-file-index="${queue.indexOf(file)}" data-item-index="${index}" type="button">查看并审核</button>
+          </article>`).join("");
+        return `<section class="queue-file"><div class="file-head"><div><div class="file-name">${escapeHtml(file.filename)}</div><div class="file-meta">${escapeHtml(file.uploaded_at || "")} · ${file.items?.length || 0} 个方向</div></div></div>${items}</section>`;
+      }).join("");
+      document.querySelectorAll(".review-open").forEach((button) => {
+        button.addEventListener("click", () => {
+          const file = queue[Number(button.dataset.fileIndex)];
+          const item = file.items[Number(button.dataset.itemIndex)];
+          openDrawer(item);
+        });
+      });
+    }
+
+    function renderAudit() {
+      const audit = state.data?.audit || [];
+      if (!audit.length) {
+        $("auditList").innerHTML = `<div class="empty">还没有审核记录。</div>`;
+        return;
+      }
+      $("auditList").innerHTML = audit.map((item) => `
+        <div class="audit-row">
+          <div class="audit-at">${escapeHtml((item.at || "").replace("T", " ").replace("+00:00", " UTC"))}</div>
+          <div class="audit-action">${item.action === "approve" ? "通过" : "拒绝"}</div>
+          <div>${escapeHtml(item.candidate_id || "")}${item.program_id ? ` → ${escapeHtml(item.program_id)}` : ""}${item.reason ? ` · ${escapeHtml(item.reason)}` : ""}</div>
+        </div>`).join("");
+    }
+
+    function valueOf(value) {
+      return value === null || value === undefined ? "" : String(value);
+    }
+
+    function changeRows(changes) {
+      if (!changes?.length) return `<div class="notice">与正式库没有字段差异。</div>`;
+      return `<div class="changes">${changes.map((change) => `
+        <div class="change-row">
+          <div class="change-level ${escapeHtml(change.level)}">${change.level === "high" ? "高" : change.level === "medium" ? "中" : "低"}</div>
+          <div class="change-main"><strong>${escapeHtml(change.label)} <span class="muted">${escapeHtml(change.field)}</span></strong>
+          <div class="change-values">${escapeHtml(valueOf(change.formal))} → ${escapeHtml(valueOf(change.candidate))}</div></div>
+        </div>`).join("")}</div>`;
+    }
+
+    function openDrawer(item) {
+      state.selected = item;
+      const defaults = item.review_defaults;
+      if (!defaults) {
+        showToast(item.error || "无法生成审核单", true);
+        return;
+      }
+      const program = defaults.program || {};
+      $("drawerEyebrow").textContent = item.status === "new" ? "New direction" : item.status === "changed" ? "Changed direction" : "Existing direction";
+      $("drawerTitle").textContent = item.candidate?.title || item.candidate_id;
+      const admissionNotice = item.review_defaults.admission_action === "append"
+        ? `<div class="notice">将复用现有招生文档 <strong>${escapeHtml(item.review_defaults.admission_id)}</strong>，新方向只会追加到该文档。</div>`
+        : `<div class="notice warning">正式库中没有同一官方来源的招生文档，通过后会新建一条招生记录。</div>`;
+      $("drawerBody").innerHTML = `
+        ${admissionNotice}
+        <div class="candidate-meta" style="margin-bottom:16px">
+          <span>${escapeHtml(item.candidate?.college || "")}</span>
+          <span>${escapeHtml(item.candidate?.source_kind || "")}</span>
+          <span>${escapeHtml(item.candidate?.source_url || "")}</span>
+        </div>
+        <h3>与正式库的差异</h3>
+        ${changeRows(item.changes)}
+        <form id="reviewForm">
+          <div class="section-title">专业与方向</div>
+          <div class="form-grid">
+            <div class="field"><label>专业代码</label><input class="input" name="major_code" value="${escapeHtml(valueOf(program.major_code))}" required></div>
+            <div class="field"><label>专业名称</label><input class="input" name="major_name" value="${escapeHtml(valueOf(program.major_name))}" required></div>
+            <div class="field"><label>学位类型</label><select class="select" name="degree_type"><option ${program.degree_type === "专硕" ? "selected" : ""}>专硕</option><option ${program.degree_type === "学硕" ? "selected" : ""}>学硕</option></select></div>
+            <div class="field"><label>学习方式</label><select class="select" name="study_mode"><option ${program.study_mode === "全日制" ? "selected" : ""}>全日制</option><option ${program.study_mode === "非全日制" ? "selected" : ""}>非全日制</option></select></div>
+            <div class="field"><label>方向代码</label><input class="input" name="direction_code" value="${escapeHtml(valueOf(program.direction_code))}" required></div>
+            <div class="field"><label>方向名称</label><input class="input" name="direction_name" value="${escapeHtml(valueOf(program.direction_name))}" required></div>
+            <div class="field"><label>方向招生计划</label><input class="input" name="plan" inputmode="numeric" value="${escapeHtml(valueOf(program.plan))}"></div>
+            <div class="field"><label>方向推免人数</label><input class="input" name="recommendation_quota" inputmode="numeric" value="${escapeHtml(valueOf(program.recommendation_quota))}"></div>
+            <div class="field"><label>专业总计划</label><input class="input" name="program_total_plan" inputmode="numeric" value="${escapeHtml(valueOf(program.program_total_plan))}"></div>
+            <div class="field"><label>专业总推免</label><input class="input" name="program_total_recommendation" inputmode="numeric" value="${escapeHtml(valueOf(program.program_total_recommendation))}"></div>
+            <div class="field span-2"><label>初试科目（每行一科）</label><textarea class="textarea" name="exam_subjects" required>${escapeHtml((program.exam_subjects || []).join("\n"))}</textarea></div>
+            <div class="field span-2"><label>招生说明</label><textarea class="textarea" name="notes">${escapeHtml(valueOf(program.notes))}</textarea></div>
+          </div>
+          <div class="section-title">发布文案</div>
+          <div class="form-grid">
+            <div class="field span-2"><label>摘要</label><textarea class="textarea" name="summary" required>${escapeHtml(valueOf(defaults.summary))}</textarea></div>
+            <div class="field span-2"><label>推荐理由</label><textarea class="textarea" name="why" required>${escapeHtml(valueOf(defaults.why))}</textarea></div>
+            <div class="field span-2"><label>本科生怎么用</label><textarea class="textarea" name="undergrad" required>${escapeHtml(valueOf(defaults.undergrad))}</textarea></div>
+            <div class="field span-2"><label>适用阶段（逗号分隔）</label><input class="input" name="audiences" value="${escapeHtml((defaults.audiences || []).join("，"))}"></div>
+          </div>
+          ${item.status === "changed" || item.status === "unchanged" ? `<label class="checkbox-row"><input type="checkbox" name="replace_existing" value="true"><span><strong>覆盖已有方向</strong><br>这会把该方向正式记录替换为本次审核内容，只应在已逐项核对后勾选。</span></label>` : ""}
+          <details><summary>查看候选原始 JSON</summary><pre class="json">${escapeHtml(JSON.stringify(item.candidate, null, 2))}</pre></details>
+        </form>`;
+      $("drawerBackdrop").hidden = false;
+      $("drawer").hidden = false;
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+      $("drawerBackdrop").hidden = true;
+      $("drawer").hidden = true;
+      document.body.style.overflow = "";
+      state.selected = null;
+    }
+
+    async function approveSelected() {
+      const item = state.selected;
+      const form = $("reviewForm");
+      if (!item || !form || !form.reportValidity()) return;
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+      payload.replace_existing = formData.has("replace_existing");
+      if (!confirm(`确认已核对 ${item.candidate?.program?.major_code || ""} / ${item.candidate?.program?.direction_code || ""} 的计划、科目和官方来源，并发布到正式库？`)) return;
+      $("approveBtn").disabled = true;
+      try {
+        const result = await api(`/api/admin/approve?queue_id=${encodeURIComponent(item.queue_id)}&candidate_id=${encodeURIComponent(item.candidate_id)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+        });
+        closeDrawer();
+        showToast(`已发布：${result.program_id}`);
+        await loadData();
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        $("approveBtn").disabled = false;
+      }
+    }
+
+    async function rejectSelected() {
+      const item = state.selected;
+      if (!item) return;
+      const reason = prompt("拒绝原因（可留空）：", "");
+      if (reason === null) return;
+      try {
+        await api(`/api/admin/reject?queue_id=${encodeURIComponent(item.queue_id)}&candidate_id=${encodeURIComponent(item.candidate_id)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason })
+        });
+        closeDrawer();
+        showToast("候选已拒绝并移出队列");
+        await loadData();
+      } catch (error) {
+        showToast(error.message, true);
+      }
+    }
+
+    async function uploadCandidate() {
+      const file = $("fileInput").files[0];
+      if (!file) { showToast("请先选择候选 JSON", true); return; }
+      $("uploadBtn").disabled = true;
+      try {
+        const text = await file.text();
+        const result = await api(`/api/admin/upload?name=${encodeURIComponent(file.name)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body: text
+        });
+        $("fileInput").value = "";
+        showToast(`已上传 ${result.count} 个候选`);
+        await loadData();
+      } catch (error) {
+        showToast(error.message, true);
+      } finally {
+        $("uploadBtn").disabled = false;
+      }
+    }
+
+    $("loginForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      state.token = $("tokenInput").value.trim();
+      sessionStorage.setItem(TOKEN_KEY, state.token);
+      $("loginError").textContent = "";
+      await loadData();
+    });
+    $("logoutBtn").addEventListener("click", () => {
+      sessionStorage.removeItem(TOKEN_KEY);
+      state.token = "";
+      showLogin();
+    });
+    $("refreshBtn").addEventListener("click", loadData);
+    $("uploadBtn").addEventListener("click", uploadCandidate);
+    $("closeDrawer").addEventListener("click", closeDrawer);
+    $("drawerBackdrop").addEventListener("click", closeDrawer);
+    $("approveBtn").addEventListener("click", approveSelected);
+    $("rejectBtn").addEventListener("click", rejectSelected);
+    document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeDrawer(); });
+    loadData();
+  </script>
+</body>
+</html>

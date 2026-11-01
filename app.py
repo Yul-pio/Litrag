@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from litrag import service  # noqa: E402
+from litrag import admin, service  # noqa: E402
 from litrag.page import get_page  # noqa: E402
 
 
@@ -54,6 +54,17 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         path = parsed.path
+        admin_response = admin.dispatch(
+            self.command,
+            path,
+            parse_qs(parsed.query),
+            {key.lower(): value for key, value in self.headers.items()},
+            b"",
+            self.client_address[0],
+        )
+        if admin_response is not None:
+            self._send(*admin_response)
+            return
         if path in ("/", "/index.html"):
             self._send(200, get_page().encode("utf-8"), "text/html; charset=utf-8")
             return
@@ -115,10 +126,23 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:  # noqa: N802
         parsed = urlparse(self.path)
         length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length)
 
         try:
+            admin_response = admin.dispatch(
+                self.command,
+                parsed.path,
+                parse_qs(parsed.query),
+                {key.lower(): value for key, value in self.headers.items()},
+                body,
+                self.client_address[0],
+            )
+            if admin_response is not None:
+                self._send(*admin_response)
+                return
+
             if parsed.path == "/api/ask":
-                payload = json.loads(self.rfile.read(length) or b"{}")
+                payload = json.loads(body or b"{}")
                 self._json(200, service.ask(
                     payload.get("question", ""),
                     self.session,
@@ -128,10 +152,9 @@ class Handler(BaseHTTPRequestHandler):
 
             if parsed.path == "/api/upload":
                 name = (parse_qs(parsed.query).get("name") or ["upload.pdf"])[0]
-                data = self.rfile.read(length)
-                if not data:
+                if not body:
                     raise ValueError("没有收到文件内容")
-                self._json(200, service.add_document(self.session, name, data))
+                self._json(200, service.add_document(self.session, name, body))
                 return
 
             self._send(404, b"not found", "text/plain; charset=utf-8")

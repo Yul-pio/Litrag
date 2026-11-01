@@ -11,6 +11,8 @@ import sys
 import unittest
 from copy import deepcopy
 import json
+import os
+import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
@@ -24,7 +26,7 @@ from litrag.chunker import chunk_document
 from litrag.evaluate import run_refusal_eval
 from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
-from litrag import service
+from litrag import admin, service
 from scripts.collectors.pku import collect_pku_catalog
 from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
@@ -264,6 +266,151 @@ class TestCandidateReview(unittest.TestCase):
         self.assertEqual(report["summary"]["unchanged"], 1)
         self.assertEqual(report["items"][0]["admission_id"], "pku-softmicro-2027-catalog")
         self.assertEqual(report["items"][0]["risk"], "none")
+
+
+class TestAdminReview(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        root = Path(self.temp.name)
+        self.programs_path = root / "programs.json"
+        self.admissions_path = root / "admission_records.json"
+        self.pending_dir = root / "candidates" / "pending"
+        self.audit_path = root / "candidates" / "review_audit.jsonl"
+        self.programs_path.write_text(
+            (ROOT / "data" / "programs.json").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        self.admissions_path.write_text(
+            (ROOT / "data" / "admission_records.json").read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+        self.token = "test-admin-token-123"
+        self.patches = [
+            patch.object(admin, "PROGRAMS_PATH", self.programs_path),
+            patch.object(admin, "ADMISSIONS_PATH", self.admissions_path),
+            patch.object(admin, "PENDING_DIR", self.pending_dir),
+            patch.object(admin, "AUDIT_PATH", self.audit_path),
+            patch.dict(os.environ, {"LITRAG_ADMIN_TOKEN": self.token}),
+        ]
+        for item in self.patches:
+            item.start()
+            self.addCleanup(item.stop)
+
+    def dispatch(self, method, path, body=b"", query=None, token=True, client_ip="test"):
+        headers = {"x-admin-token": self.token} if token else {}
+        return admin.dispatch(method, path, query or {}, headers, body, client_ip)
+
+    @staticmethod
+    def candidate_form(item: dict) -> dict:
+        defaults = item["review_defaults"]
+        program = defaults["program"]
+        return {
+            "major_code": program["major_code"],
+            "major_name": program["major_name"],
+            "degree_type": program["degree_type"],
+            "study_mode": program["study_mode"],
+            "direction_code": program["direction_code"],
+            "direction_name": program["direction_name"],
+            "plan": program["plan"],
+            "recommendation_quota": program["recommendation_quota"],
+            "program_total_plan": program["program_total_plan"],
+            "program_total_recommendation": program["program_total_recommendation"],
+            "exam_subjects": "\n".join(program["exam_subjects"]),
+            "notes": program["notes"],
+            "summary": defaults["summary"],
+            "why": defaults["why"],
+            "undergrad": defaults["undergrad"],
+            "audiences": "，".join(defaults["audiences"]),
+            "replace_existing": False,
+        }
+
+    def test_admin_upload_and_approve_new_direction(self):
+        status, *_ = self.dispatch("GET", "/api/admin/pending", token=False)
+        self.assertEqual(status, 401)
+
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        payload = collect_tsinghua_catalog(year=2027, html=html, college_filter="计算机科学与技术系")
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/upload",
+            body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            query={"name": ["tsinghua_2027_catalog.json"]},
+        )
+        self.assertEqual(status, 201)
+
+        status, body, _, _ = self.dispatch("GET", "/api/admin/pending")
+        self.assertEqual(status, 200)
+        pending = json.loads(body)
+        self.assertEqual(pending["summary"]["candidate_count"], 2)
+        queue_id = pending["queue"][0]["queue_id"]
+        item = next(
+            item for item in pending["queue"][0]["items"]
+            if item["candidate"]["program"]["direction_code"] == "03"
+        )
+        form = self.candidate_form(item)
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/approve",
+            body=json.dumps(form, ensure_ascii=False).encode("utf-8"),
+            query={"queue_id": [queue_id], "candidate_id": [item["candidate_id"]]},
+        )
+        self.assertEqual(status, 200, body.decode("utf-8"))
+
+        programs = json.loads(self.programs_path.read_text(encoding="utf-8"))
+        admissions = json.loads(self.admissions_path.read_text(encoding="utf-8"))
+        program_id = "thu-2027-024-085400-03-program"
+        self.assertTrue(any(item["id"] == program_id for item in programs))
+        admission = next(item for item in admissions if item["id"] == "thu-cs-2027-catalog")
+        self.assertIn(program_id, admission["program_ids"])
+        self.assertEqual(len(admissions), 3)
+
+        status, body, _, _ = self.dispatch("GET", "/api/admin/pending")
+        pending = json.loads(body)
+        self.assertEqual(pending["summary"]["candidate_count"], 1)
+        audit = [json.loads(line) for line in self.audit_path.read_text(encoding="utf-8").splitlines()]
+        self.assertEqual(audit[-1]["action"], "approve")
+
+    def test_admin_requires_override_for_existing_direction(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        payload = collect_tsinghua_catalog(year=2027, html=html, college_filter="计算机科学与技术系")
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/upload",
+            body=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            query={"name": ["tsinghua_2027_catalog.json"]},
+        )
+        self.assertEqual(status, 201)
+        status, body, _, _ = self.dispatch("GET", "/api/admin/pending")
+        pending = json.loads(body)
+        queue_id = pending["queue"][0]["queue_id"]
+        item = next(
+            item for item in pending["queue"][0]["items"]
+            if item["candidate"]["program"]["direction_code"] == "01"
+        )
+        query = {"queue_id": [queue_id], "candidate_id": [item["candidate_id"]]}
+
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/approve",
+            body=json.dumps(self.candidate_form(item), ensure_ascii=False).encode("utf-8"),
+            query=query,
+        )
+        self.assertEqual(status, 409)
+        self.assertIn("覆盖已有方向", body.decode("utf-8"))
+
+        form = self.candidate_form(item)
+        form["replace_existing"] = True
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/approve",
+            body=json.dumps(form, ensure_ascii=False).encode("utf-8"),
+            query=query,
+        )
+        self.assertEqual(status, 200, body.decode("utf-8"))
+        programs = json.loads(self.programs_path.read_text(encoding="utf-8"))
+        program = next(item for item in programs if item["id"] == "thu-cs-2027-085400-01")
+        self.assertEqual(program["notes"], "")
 
 
 class TestRadar(unittest.TestCase):

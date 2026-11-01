@@ -15,3 +15,7 @@ uploads/
 data/candidates/*.json
 data/candidates/*.review.md
 data/candidates/*.review.json
+data/candidates/pending/
+data/candidates/processed/
+data/candidates/rejected/
+data/candidates/review_audit.jsonl
