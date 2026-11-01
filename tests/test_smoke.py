@@ -328,6 +328,7 @@ class TestAdminReview(unittest.TestCase):
         self.pending_dir = root / "candidates" / "pending"
         self.audit_path = root / "candidates" / "review_audit.jsonl"
         self.change_events_path = root / "change_events.json"
+        self.dismissed_path = root / "candidates" / "dismissed_candidates.json"
         self.programs_path.write_text(
             (ROOT / "data" / "programs.json").read_text(encoding="utf-8"),
             encoding="utf-8",
@@ -337,13 +338,18 @@ class TestAdminReview(unittest.TestCase):
             encoding="utf-8",
         )
         self.token = "test-admin-token-123"
+        self.ingest_token = "test-ingest-token-123"
         self.patches = [
             patch.object(admin, "PROGRAMS_PATH", self.programs_path),
             patch.object(admin, "ADMISSIONS_PATH", self.admissions_path),
             patch.object(admin, "PENDING_DIR", self.pending_dir),
             patch.object(admin, "AUDIT_PATH", self.audit_path),
             patch.object(admin, "CHANGE_EVENTS_PATH", self.change_events_path),
-            patch.dict(os.environ, {"LITRAG_ADMIN_TOKEN": self.token}),
+            patch.object(admin, "DISMISSED_PATH", self.dismissed_path),
+            patch.dict(os.environ, {
+                "LITRAG_ADMIN_TOKEN": self.token,
+                "LITRAG_INGEST_TOKEN": self.ingest_token,
+            }),
         ]
         for item in self.patches:
             item.start()
@@ -352,6 +358,16 @@ class TestAdminReview(unittest.TestCase):
     def dispatch(self, method, path, body=b"", query=None, token=True, client_ip="test"):
         headers = {"x-admin-token": self.token} if token else {}
         return admin.dispatch(method, path, query or {}, headers, body, client_ip)
+
+    def ingest(self, payload):
+        return admin.dispatch(
+            "POST",
+            "/api/admin/ingest",
+            {"name": ["auto-candidates.json"]},
+            {"x-ingest-token": self.ingest_token},
+            json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            "test",
+        )
 
     @staticmethod
     def candidate_form(item: dict) -> dict:
@@ -470,6 +486,59 @@ class TestAdminReview(unittest.TestCase):
         self.assertEqual(program["notes"], "")
         change_events_data = json.loads(self.change_events_path.read_text(encoding="utf-8"))
         self.assertTrue(any(item["event_type"] == "notes_changed" and not item["user_visible"] for item in change_events_data))
+
+    def test_automatic_ingest_skips_unchanged_duplicates_and_dismissed(self):
+        pku_html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        pku_payload = collect_pku_catalog(year=2027, html=pku_html, college_filter="软件与微电子学院")
+        status, body, _, _ = self.ingest(pku_payload)
+        self.assertEqual(status, 200)
+        result = json.loads(body)
+        self.assertFalse(result["queued"])
+        self.assertEqual(result["skipped_unchanged"], 1)
+
+        tsinghua_html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        tsinghua_payload = collect_tsinghua_catalog(
+            year=2027, html=tsinghua_html, college_filter="计算机科学与技术系"
+        )
+        status, body, _, _ = self.ingest(tsinghua_payload)
+        self.assertEqual(status, 200)
+        result = json.loads(body)
+        self.assertTrue(result["queued"])
+        self.assertEqual(result["queued"], 2)
+
+        status, body, _, _ = self.ingest(tsinghua_payload)
+        result = json.loads(body)
+        self.assertFalse(result["queued"])
+        self.assertEqual(result["skipped_duplicate"], 2)
+
+        out_of_scope = deepcopy(tsinghua_payload)
+        for item in out_of_scope["items"]:
+            item["college"] = "建筑学院"
+        status, body, _, _ = self.ingest(out_of_scope)
+        result = json.loads(body)
+        self.assertFalse(result["queued"])
+        self.assertEqual(result["skipped_out_of_scope"], 2)
+
+        status, body, _, _ = self.dispatch("GET", "/api/admin/pending")
+        pending = json.loads(body)
+        queue_id = pending["queue"][0]["queue_id"]
+        item = next(
+            item for item in pending["queue"][0]["items"]
+            if item["candidate"]["program"]["direction_code"] == "03"
+        )
+        status, body, _, _ = self.dispatch(
+            "POST",
+            "/api/admin/reject",
+            body=json.dumps({"reason": "目标受众不匹配"}, ensure_ascii=False).encode("utf-8"),
+            query={"queue_id": [queue_id], "candidate_id": [item["candidate_id"]]},
+        )
+        self.assertEqual(status, 200)
+
+        status, body, _, _ = self.ingest(tsinghua_payload)
+        result = json.loads(body)
+        self.assertFalse(result["queued"])
+        self.assertEqual(result["skipped_dismissed"], 1)
+        self.assertEqual(result["skipped_duplicate"], 1)
 
 
 class TestRadar(unittest.TestCase):

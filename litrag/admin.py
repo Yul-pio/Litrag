@@ -39,6 +39,7 @@ PROCESSED_DIR = CANDIDATE_ROOT / "processed"
 REJECTED_DIR = CANDIDATE_ROOT / "rejected"
 AUDIT_PATH = CANDIDATE_ROOT / "review_audit.jsonl"
 CHANGE_EVENTS_PATH = ROOT / "data" / "change_events.json"
+DISMISSED_PATH = CANDIDATE_ROOT / "dismissed_candidates.json"
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024
 QUEUE_ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,180}$")
@@ -79,6 +80,14 @@ def _configured() -> bool:
     return len(_admin_token()) >= 12
 
 
+def _ingest_token() -> str:
+    return os.environ.get("LITRAG_INGEST_TOKEN", "").strip()
+
+
+def _ingest_configured() -> bool:
+    return len(_ingest_token()) >= 12
+
+
 def _require_token(headers: dict[str, str]) -> None:
     token = _admin_token()
     if len(token) < 12:
@@ -86,6 +95,15 @@ def _require_token(headers: dict[str, str]) -> None:
     supplied = _header(headers, "X-Admin-Token")
     if not supplied or not hmac.compare_digest(supplied, token):
         raise AdminError(401, "管理员令牌无效，请重新登录")
+
+
+def _require_ingest_token(headers: dict[str, str]) -> None:
+    token = _ingest_token()
+    if len(token) < 12:
+        raise AdminError(503, "服务端未配置 LITRAG_INGEST_TOKEN（至少 12 位）")
+    supplied = _header(headers, "X-Ingest-Token")
+    if not supplied or not hmac.compare_digest(supplied, token):
+        raise AdminError(401, "采集令牌无效")
 
 
 def _response_json(status: int, payload: dict) -> tuple[int, bytes, str, dict[str, str]]:
@@ -173,6 +191,7 @@ def _audit(action: str, queue_id: str, candidate: dict, client_ip: str, **extra:
         "candidate_id": candidate.get("candidate_id"),
         "school_id": candidate.get("school_id"),
         "college": candidate.get("college"),
+        "candidate_fingerprint": _candidate_fingerprint(candidate),
         "client_ip": client_ip,
         **extra,
     }
@@ -294,6 +313,153 @@ def _upload(name: str, body: bytes) -> dict:
     PENDING_DIR.mkdir(parents=True, exist_ok=True)
     _atomic_write_json(PENDING_DIR / f"{queue_id}.json", payload)
     return {"queue_id": queue_id, "count": len(items)}
+
+
+def _candidate_fingerprint(candidate: dict) -> str:
+    program = candidate.get("program") if isinstance(candidate.get("program"), dict) else {}
+    stable = {
+        "school_id": candidate.get("school_id"),
+        "year": candidate.get("year"),
+        "source_id": candidate.get("source_id"),
+        "source_url": candidate.get("source_url"),
+        "document_type": candidate.get("document_type"),
+        "college": candidate.get("college"),
+        "title": candidate.get("title"),
+        "program": {
+            field: program.get(field)
+            for field in (
+                "major_code", "major_name", "degree_type", "study_mode",
+                "direction_code", "direction_name", "plan", "recommendation_quota",
+                "program_total_plan", "program_total_recommendation", "exam_subjects", "notes",
+            )
+        },
+    }
+    encoded = json.dumps(stable, ensure_ascii=False, sort_keys=True, default=str)
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _dismissed_records() -> list[dict]:
+    if not DISMISSED_PATH.exists():
+        return []
+    try:
+        payload = _load_json(DISMISSED_PATH)
+    except Exception:
+        return []
+    return payload if isinstance(payload, list) else []
+
+
+def _dismissed_fingerprints() -> set[str]:
+    return {
+        item.get("fingerprint")
+        for item in _dismissed_records()
+        if isinstance(item, dict) and item.get("fingerprint")
+    }
+
+
+def _remember_dismissed(candidate: dict, reason: str) -> None:
+    fingerprint = _candidate_fingerprint(candidate)
+    records = _dismissed_records()
+    if any(item.get("fingerprint") == fingerprint for item in records):
+        return
+    program = candidate.get("program") if isinstance(candidate.get("program"), dict) else {}
+    records.append({
+        "fingerprint": fingerprint,
+        "candidate_id": candidate.get("candidate_id"),
+        "school_id": candidate.get("school_id"),
+        "college": candidate.get("college"),
+        "direction_code": program.get("direction_code"),
+        "reason": reason,
+        "dismissed_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    })
+    _atomic_write_json(DISMISSED_PATH, records)
+
+
+def _pending_fingerprints() -> set[str]:
+    if not PENDING_DIR.exists():
+        return set()
+    fingerprints: set[str] = set()
+    for path in PENDING_DIR.glob("*.json"):
+        try:
+            for candidate in candidate_items(_load_json(path)):
+                fingerprints.add(_candidate_fingerprint(candidate))
+        except Exception:
+            continue
+    return fingerprints
+
+
+def _ingest_candidates(name: str, body: bytes) -> dict:
+    if not body:
+        raise AdminError(400, "候选文件为空")
+    if len(body) > MAX_UPLOAD_BYTES:
+        raise AdminError(413, "候选文件超过 2MB 限制")
+    try:
+        payload = json.loads(body.decode("utf-8-sig"))
+        items = candidate_items(payload)
+    except Exception as exc:
+        raise AdminError(400, f"候选 JSON 格式错误：{exc}") from exc
+    if not items:
+        raise AdminError(400, "候选文件没有 items")
+
+    programs = _load_json(PROGRAMS_PATH)
+    admissions = _load_json(ADMISSIONS_PATH)
+    dismissed = _dismissed_fingerprints()
+    pending = _pending_fingerprints()
+    watched_scopes = {
+        (item.get("school_id"), normalize_text(item.get("college")))
+        for item in programs + admissions
+        if item.get("school_id") and item.get("college")
+    }
+    actionable: list[dict] = []
+    summary = {
+        "received": len(items),
+        "queued": 0,
+        "skipped_unchanged": 0,
+        "skipped_duplicate": 0,
+        "skipped_dismissed": 0,
+        "skipped_out_of_scope": 0,
+    }
+
+    for candidate in items:
+        fingerprint = _candidate_fingerprint(candidate)
+        scope = (candidate.get("school_id"), normalize_text(candidate.get("college")))
+        if scope not in watched_scopes:
+            summary["skipped_out_of_scope"] += 1
+            continue
+        if fingerprint in dismissed:
+            summary["skipped_dismissed"] += 1
+            continue
+        if fingerprint in pending:
+            summary["skipped_duplicate"] += 1
+            continue
+        report = _candidate_report(candidate, programs, admissions)
+        if report.get("status") == "unchanged":
+            summary["skipped_unchanged"] += 1
+            continue
+        actionable.append(candidate)
+
+    if not actionable:
+        return {"queued": False, **summary, "queue_id": None}
+
+    school_ids = {str(candidate.get("school_id") or "mixed") for candidate in actionable}
+    years = {str(candidate.get("year") or "unknown") for candidate in actionable}
+    digest_source = "".join(sorted(_candidate_fingerprint(candidate) for candidate in actionable))
+    digest = hashlib.sha256(digest_source.encode("utf-8")).hexdigest()[:12]
+    school_part = re.sub(r"[^A-Za-z0-9_-]", "-", next(iter(school_ids)) if len(school_ids) == 1 else "mixed")
+    year_part = re.sub(r"[^A-Za-z0-9_-]", "-", next(iter(years)) if len(years) == 1 else "mixed")
+    queue_id = f"auto-{school_part}-{year_part}-{digest}"
+
+    queue_payload: Any
+    if isinstance(payload, dict):
+        queue_payload = dict(payload)
+        queue_payload["items"] = actionable
+        queue_payload["count"] = len(actionable)
+        queue_payload["ingest_summary"] = summary | {"source_name": name}
+    else:
+        queue_payload = actionable
+    PENDING_DIR.mkdir(parents=True, exist_ok=True)
+    _atomic_write_json(PENDING_DIR / f"{queue_id}.json", queue_payload)
+    summary["queued"] = len(actionable)
+    return {"queued": True, **summary, "queue_id": queue_id}
 
 
 def _optional_int(value: Any, label: str) -> int | None:
@@ -422,6 +588,7 @@ def _reject(queue_id: str, candidate_id: str, reason: str, client_ip: str) -> di
     candidate = _find_candidate(payload, candidate_id)
     reason = normalize_text(reason)[:500]
     _audit("reject", queue_id, candidate, client_ip, reason=reason)
+    _remember_dismissed(candidate, reason)
     _remove_candidate(path, payload, candidate_id)
     return {"status": "ok"}
 
@@ -450,7 +617,19 @@ def dispatch(
 
     try:
         if method == "GET" and path == "/api/admin/status":
-            return _response_json(200, {"configured": _configured()})
+            return _response_json(200, {
+                "configured": _configured(),
+                "ingest_configured": _ingest_configured(),
+            })
+
+        if method == "POST" and path == "/api/admin/ingest":
+            _require_ingest_token(headers)
+            with _lock:
+                result = _ingest_candidates(
+                    _query_value(query, "name", "candidates.json"),
+                    body,
+                )
+            return _response_json(200, result)
 
         _require_token(headers)
         if method == "GET" and path == "/api/admin/pending":

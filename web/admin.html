@@ -237,6 +237,10 @@
     </header>
 
     <main class="shell main">
+      <div id="ingestWarning" class="notice warning" hidden>
+        自动同步未完成配置：服务端需要 <code>LITRAG_INGEST_TOKEN</code>，GitHub 仓库需要 secrets
+        <code>LITRAG_SITE_URL</code> 和 <code>LITRAG_INGEST_TOKEN</code>。配置前仍可手动上传候选。
+      </div>
       <section class="hero">
         <div>
           <div class="eyebrow">Official-source review</div>
@@ -256,7 +260,7 @@
 
       <section class="panel">
         <div class="panel-head">
-          <div><h2>待审核队列</h2><p class="muted">上传 GitHub Actions 下载的候选 JSON，或使用本地采集产物。</p></div>
+          <div><h2>待审核队列</h2><p class="muted">GitHub Actions 会自动同步新增或变化候选；手动上传只作为兜底。</p></div>
           <div class="upload-line">
             <input id="fileInput" type="file" accept="application/json,.json">
             <button id="uploadBtn" class="btn btn-primary" type="button">上传候选</button>
@@ -289,7 +293,7 @@
 
   <script>
     const TOKEN_KEY = "litrag_admin_token";
-    const state = { token: sessionStorage.getItem(TOKEN_KEY) || "", data: null, selected: null };
+    const state = { token: sessionStorage.getItem(TOKEN_KEY) || "", data: null, selected: null, ingestConfigured: false };
     const $ = (id) => document.getElementById(id);
 
     function escapeHtml(value) {
@@ -350,6 +354,7 @@
         showLogin("服务端还没有配置 LITRAG_ADMIN_TOKEN（至少 12 位）");
         return false;
       }
+      state.ingestConfigured = Boolean(data.ingest_configured);
       return true;
     }
 
@@ -359,6 +364,7 @@
         if (!(await checkStatus())) return;
         state.data = await api("/api/admin/pending");
         showApp();
+        $("ingestWarning").hidden = state.ingestConfigured;
         render();
       } catch (error) {
         showLogin(error.message);

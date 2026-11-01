@@ -35,6 +35,20 @@ jobs:
             data/candidates/pku_2027_catalog.json
             data/candidates/pku_2027_catalog.review.md
           if-no-files-found: error
+      - name: Sync PKU candidates to review console
+        env:
+          LITRAG_SITE_URL: ${{ secrets.LITRAG_SITE_URL }}
+          LITRAG_INGEST_TOKEN: ${{ secrets.LITRAG_INGEST_TOKEN }}
+        run: |
+          if [ -z "$LITRAG_SITE_URL" ] || [ -z "$LITRAG_INGEST_TOKEN" ]; then
+            echo "::warning::LITRAG_SITE_URL or LITRAG_INGEST_TOKEN is not configured; skipped auto sync."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --retry 3 --retry-delay 5 \
+            -X POST "${LITRAG_SITE_URL%/}/api/admin/ingest?name=pku_2027_catalog.json" \
+            -H "Content-Type: application/json" \
+            -H "X-Ingest-Token: ${LITRAG_INGEST_TOKEN}" \
+            --data-binary @data/candidates/pku_2027_catalog.json
 
   tsinghua:
     runs-on: ubuntu-latest
@@ -63,3 +77,17 @@ jobs:
             data/candidates/tsinghua_2027_catalog.json
             data/candidates/tsinghua_2027_catalog.review.md
           if-no-files-found: error
+      - name: Sync Tsinghua candidates to review console
+        env:
+          LITRAG_SITE_URL: ${{ secrets.LITRAG_SITE_URL }}
+          LITRAG_INGEST_TOKEN: ${{ secrets.LITRAG_INGEST_TOKEN }}
+        run: |
+          if [ -z "$LITRAG_SITE_URL" ] || [ -z "$LITRAG_INGEST_TOKEN" ]; then
+            echo "::warning::LITRAG_SITE_URL or LITRAG_INGEST_TOKEN is not configured; skipped auto sync."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --retry 3 --retry-delay 5 \
+            -X POST "${LITRAG_SITE_URL%/}/api/admin/ingest?name=tsinghua_2027_catalog.json" \
+            -H "Content-Type: application/json" \
+            -H "X-Ingest-Token: ${LITRAG_INGEST_TOKEN}" \
+            --data-binary @data/candidates/tsinghua_2027_catalog.json
