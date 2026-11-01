@@ -288,6 +288,17 @@ python scripts/promote_candidate.py draft `
 审核单会生成在候选文件旁边，状态为 `draft`。候选自带的专业代码、方向、
 计划数和考试科目会预填到审核单中，但仍需人工核对来源和关键数字。
 
+如果候选的官方来源 URL 与正式库中的招生文档完全一致，审核单会自动设置：
+
+```text
+admission_action = append
+admission_id = 已有招生文档 ID
+```
+
+这表示新方向属于同一份官方招生目录，例如清华 `03 强军计划` 应追加到
+`thu-cs-2027-catalog.program_ids`，而不是再创建一条重复招生文档。追加到
+`verified` 文档时，审核单状态也必须是 `verified`。
+
 人工核对并补齐以下字段后才能发布：
 
 - 专业代码、专业名称；

@@ -1,9 +1,9 @@
 """把采集候选转换为正式专业和招生记录。
 
 流程：
-    draft  -> 生成待填写审核单
+    draft  -> 生成待填写审核单；同一官方来源已有招生文档时自动使用 append
     人工填写专业、方向、考试科目等字段
-    apply  -> 写入 programs.json 和 admission_records.json
+    apply  -> 新建招生文档，或把新方向追加到已有 admission.program_ids
 
 用法：
     python scripts/promote_candidate.py draft \
@@ -13,6 +13,9 @@
     python scripts/promote_candidate.py apply \
       --candidate-file data/candidates/pku_2027_catalog.json \
       --review data/candidates/pku-2027-catalog-4251f989.review.json
+
+向已核验招生文档追加方向时，审核单必须是 verified；追加不会覆盖原招生文档，
+只新增 program 记录和 program_ids 关联。
 """
 
 from __future__ import annotations
@@ -58,7 +61,20 @@ def find_candidate(path: Path, candidate_id: str) -> dict:
     return matches[0]
 
 
-def draft_review(candidate: dict) -> dict:
+def find_reusable_admission(candidate: dict, admissions: list[dict]) -> dict | None:
+    matches = [
+        item for item in admissions
+        if item.get("school_id") == candidate.get("school_id")
+        and item.get("year") == candidate.get("year")
+        and item.get("source_url") == candidate.get("source_url")
+    ]
+    if len(matches) > 1:
+        ids = "、".join(str(item.get("id")) for item in matches)
+        raise ValueError(f"同一官方来源匹配到多条招生文档，请先清理重复记录：{ids}")
+    return matches[0] if matches else None
+
+
+def draft_review(candidate: dict, admissions: list[dict] | None = None) -> dict:
     candidate_id = candidate.get("candidate_id", "").strip()
     if not candidate_id:
         raise ValueError("候选缺少 candidate_id")
@@ -107,9 +123,11 @@ def draft_review(candidate: dict) -> dict:
             if field in candidate_program:
                 program[field] = candidate_program[field]
 
-    return {
+    review = {
         "candidate_id": candidate_id,
         "id": candidate_id,
+        "admission_action": "create",
+        "admission_id": candidate_id,
         "school_id": school_id,
         "source_id": candidate.get("source_id", ""),
         "year": year,
@@ -136,9 +154,44 @@ def draft_review(candidate: dict) -> dict:
         "program": program,
     }
 
+    existing_admission = find_reusable_admission(candidate, admissions or [])
+    if existing_admission is not None:
+        for field in (
+            "source_id",
+            "document_type",
+            "college",
+            "title",
+            "source_url",
+            "source_label",
+            "source_kind",
+            "page_location",
+            "published_at",
+            "summary",
+            "why",
+            "undergrad",
+            "tags",
+            "audiences",
+            "featured",
+            "signal",
+            "read_minutes",
+            "feed_date",
+            "feed_time",
+        ):
+            if field in existing_admission:
+                review[field] = existing_admission[field]
+        review.update({
+            "id": existing_admission["id"],
+            "admission_action": "append",
+            "admission_id": existing_admission["id"],
+            "verified_at": None,
+        })
+
+    return review
+
 
 def validate_review(review: dict, candidate: dict) -> None:
     errors: list[str] = []
+    admission_action = review.get("admission_action", "create")
     if review.get("candidate_id") != candidate.get("candidate_id"):
         errors.append("review.candidate_id 与候选不一致")
     if review.get("source_url") != candidate.get("source_url"):
@@ -148,6 +201,15 @@ def validate_review(review: dict, candidate: dict) -> None:
             errors.append(f"缺少字段：{field}")
     if review.get("status") not in {"draft", "verified", "rejected"}:
         errors.append("status 必须是 draft / verified / rejected")
+    if admission_action not in {"create", "append"}:
+        errors.append("admission_action 必须是 create / append")
+    if admission_action == "append":
+        if not review.get("admission_id"):
+            errors.append("append 审核单缺少 admission_id")
+        if review.get("id") != review.get("admission_id"):
+            errors.append("append 审核单的 id 必须等于 admission_id")
+        if review.get("status") != "verified":
+            errors.append("向已有招生文档追加方向时，审核单 status 必须为 verified")
 
     program = review.get("program")
     if not isinstance(program, dict):
@@ -173,6 +235,8 @@ def validate_review(review: dict, candidate: dict) -> None:
             errors.append("verified 记录缺少 audiences")
         if not program.get("exam_subjects"):
             errors.append("verified 记录缺少 exam_subjects")
+        if not program.get("verified_at"):
+            errors.append("verified 记录缺少 program.verified_at")
 
     if errors:
         raise ValueError("审核单不完整：\n  - " + "\n  - ".join(errors))
@@ -221,6 +285,60 @@ def upsert(items: list[dict], value: dict, update: bool) -> None:
     items[index] = value
 
 
+def direction_key(program: dict) -> tuple[str, str, str, str, str]:
+    return (
+        str(program.get("school_id") or "").strip(),
+        str(program.get("year") or "").strip(),
+        str(program.get("college") or "").strip(),
+        str(program.get("major_code") or "").strip(),
+        str(program.get("direction_code") or "").strip(),
+    )
+
+
+def apply_review(
+    review: dict,
+    candidate: dict,
+    programs: list[dict],
+    admissions: list[dict],
+    update: bool = False,
+) -> tuple[dict, dict]:
+    validate_review(review, candidate)
+    program, admission_record = build_records(review)
+    action = review.get("admission_action", "create")
+
+    same_direction = [
+        item for item in programs
+        if direction_key(item) == direction_key(program)
+    ]
+    if same_direction and same_direction[0].get("id") != program.get("id"):
+        raise ValueError(
+            f"同学校、专业、方向已存在正式记录：{same_direction[0].get('id')}；"
+            "请对齐 program.id 后再审核"
+        )
+
+    if action == "append":
+        existing = next(
+            (item for item in admissions if item.get("id") == review.get("admission_id")),
+            None,
+        )
+        if existing is None:
+            raise ValueError(f"找不到待追加的招生文档：{review.get('admission_id')}")
+        if existing.get("source_url") != candidate.get("source_url"):
+            raise ValueError("待追加招生文档的来源 URL 与候选不一致")
+        if existing.get("status") != "verified":
+            raise ValueError("只能向 verified 招生文档追加已核验方向")
+
+        upsert(programs, program, update)
+        program_ids = existing.setdefault("program_ids", [])
+        if program["id"] not in program_ids:
+            program_ids.append(program["id"])
+        return program, existing
+
+    upsert(programs, program, update)
+    upsert(admissions, admission_record, update)
+    return program, admission_record
+
+
 def resolve_path(value: str | Path) -> Path:
     path = Path(value)
     return path if path.is_absolute() else ROOT / path
@@ -244,30 +362,42 @@ def main() -> int:
     args = parser.parse_args()
     try:
         candidate_path = resolve_path(args.candidate_file)
+        admissions = load_json(ADMISSIONS_PATH)
         if args.command == "draft":
             candidate = find_candidate(candidate_path, args.candidate_id)
-            review = draft_review(candidate)
+            review = draft_review(candidate, admissions)
             output = resolve_path(args.output) if args.output else candidate_path.parent / f"{args.candidate_id}.review.json"
             save_json(output, review)
             print(f"审核单已生成：{output}")
+            if review["admission_action"] == "append":
+                print(f"已匹配现有招生文档：{review['admission_id']}；审核通过后将追加新方向。")
             print("请填写 program 字段、摘要、推荐理由和本科生怎么用，再执行 apply。")
             return 0
 
         review = load_json(resolve_path(args.review))
         candidate = find_candidate(candidate_path, review.get("candidate_id", ""))
-        validate_review(review, candidate)
-        program, admission = build_records(review)
         programs = load_json(PROGRAMS_PATH)
-        admissions = load_json(ADMISSIONS_PATH)
-        upsert(programs, program, args.update)
-        upsert(admissions, admission, args.update)
+        program, admission = apply_review(
+            review,
+            candidate,
+            programs,
+            admissions,
+            update=args.update,
+        )
         if args.dry_run:
-            print(json.dumps({"program": program, "admission": admission}, ensure_ascii=False, indent=2))
+            print(json.dumps({
+                "admission_action": review.get("admission_action", "create"),
+                "program": program,
+                "admission": admission,
+            }, ensure_ascii=False, indent=2))
             return 0
         save_json(PROGRAMS_PATH, programs)
         save_json(ADMISSIONS_PATH, admissions)
         print(f"已写入正式专业：{program['id']}")
-        print(f"已写入正式招生记录：{admission['id']}")
+        if review.get("admission_action", "create") == "append":
+            print(f"已追加到现有招生记录：{admission['id']}")
+        else:
+            print(f"已写入正式招生记录：{admission['id']}")
         print("请继续运行：python scripts/validate_content.py")
         return 0
     except Exception as exc:

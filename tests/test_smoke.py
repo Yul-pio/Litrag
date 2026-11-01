@@ -27,7 +27,7 @@ from litrag.query import build_query_plan
 from litrag import service
 from scripts.collectors.pku import collect_pku_catalog
 from scripts.collectors.tsinghua import collect_tsinghua_catalog
-from scripts.promote_candidate import build_records, draft_review, validate_review
+from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
 from scripts.review_candidates import render_markdown, review_candidates
 from litrag.retriever import Retriever
 
@@ -175,12 +175,39 @@ class TestCandidatePromotion(unittest.TestCase):
             "direction_code": "01",
             "direction_name": "软件工程",
             "exam_subjects": ["101 思想政治理论"],
+            "verified_at": "2026-10-31",
         })
         validate_review(review, candidate)
         program, admission = build_records(review)
         self.assertEqual(program["major_code"], "085400")
         self.assertEqual(admission["program_ids"], [program["id"]])
         self.assertEqual(admission["source_url"], candidate["source_url"])
+
+    def test_new_direction_appends_to_existing_admission(self):
+        html = (ROOT / "tests" / "fixtures" / "tsinghua_2027_cs_catalog.html").read_text(encoding="utf-8")
+        payload = collect_tsinghua_catalog(year=2027, html=html, college_filter="计算机科学与技术系")
+        candidate = next(
+            item for item in payload["items"]
+            if item["program"]["direction_code"] == "03"
+        )
+        programs = deepcopy(json.loads((ROOT / "data" / "programs.json").read_text(encoding="utf-8")))
+        admissions = deepcopy(json.loads((ROOT / "data" / "admission_records.json").read_text(encoding="utf-8")))
+
+        review = draft_review(candidate, admissions)
+        self.assertEqual(review["admission_action"], "append")
+        self.assertEqual(review["id"], "thu-cs-2027-catalog")
+        self.assertEqual(review["admission_id"], "thu-cs-2027-catalog")
+
+        review["status"] = "verified"
+        review["verified_at"] = "2026-11-01"
+        review["program"]["verified_at"] = "2026-11-01"
+        validate_review(review, candidate)
+        program, admission = apply_review(review, candidate, programs, admissions)
+
+        self.assertEqual(admission["id"], "thu-cs-2027-catalog")
+        self.assertIn(program["id"], admission["program_ids"])
+        self.assertEqual(len(admissions), 3)
+        self.assertTrue(any(item["id"] == program["id"] for item in programs))
 
     def test_source_url_mismatch_is_rejected(self):
         html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
