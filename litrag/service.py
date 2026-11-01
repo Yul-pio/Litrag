@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .answerer import answer
 from .chunker import Chunk, chunk_document, chunk_documents
+from .evidence_pack import build_evidence_pack
 from .loader import load_dir, load_file
 from .query import build_query_plan
 from .retriever import Retriever
@@ -330,6 +331,33 @@ def list_documents(sid: str | None) -> dict:
         "demo_docs": _demo_documents(),
         "retention_hours": retention_hours,
     }
+
+
+def create_evidence_pack(sid: str | None, payload: dict) -> dict:
+    """为当前文献库中的一篇论文生成结构化复试证据包。"""
+    retriever, source = get_retriever(sid)
+    doc_id = str(payload.get("doc_id") or "").strip()
+    chunks = retriever.chunks
+    if doc_id:
+        chunks = [chunk for chunk in chunks if chunk.doc_id == doc_id]
+    if not chunks:
+        raise ValueError("找不到所选论文，请刷新文献库后重试")
+    if not doc_id:
+        doc_id = chunks[0].doc_id
+    demo_title = _demo_paper_metadata().get(doc_id, {}).get("title")
+    pack = build_evidence_pack(
+        chunks,
+        doc_id=doc_id,
+        school=str(payload.get("school") or ""),
+        major=str(payload.get("major") or ""),
+        advisor=str(payload.get("advisor") or ""),
+        direction=str(payload.get("direction") or ""),
+        purpose=str(payload.get("purpose") or "复试汇报"),
+        duration=int(payload.get("duration") or 3),
+        title=demo_title,
+    )
+    pack["library_source"] = source
+    return pack
 
 
 def _load_list(path: Path, label: str) -> list[dict]:

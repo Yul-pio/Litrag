@@ -153,6 +153,11 @@ class Handler(BaseHTTPRequestHandler):
                 ))
                 return
 
+            if parsed.path == "/api/evidence-pack":
+                payload = json.loads(body or b"{}")
+                self._json(200, service.create_evidence_pack(self.session, payload))
+                return
+
             if parsed.path == "/api/upload":
                 name = (parse_qs(parsed.query).get("name") or ["upload.pdf"])[0]
                 if not body:

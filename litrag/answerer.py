@@ -147,6 +147,14 @@ def is_answerable(
 
 def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answer:
     """从召回的块里挑出最相关、最像完整结论的原文句子。"""
+    if not hits:
+        return Answer(
+            text="没有找到可用于回答的原文。",
+            citations=[],
+            mode="none",
+            headline="没有找到可用证据",
+            strength="none",
+        )
     q_terms = set(content_terms(question))
     best_score = hits[0].score if hits else 0.0
     candidates: list[tuple[float, int, int, str, Hit]] = []

@@ -54,6 +54,10 @@ def main() -> int:
     if not docs:
         print("没有找到可索引的文档", file=sys.stderr)
         return 1
+    metadata = {item["id"]: item for item in manifest}
+    for doc in docs:
+        if doc.doc_id in metadata:
+            doc.title = metadata[doc.doc_id].get("title") or doc.title
     chunks = chunk_documents(docs, target_size=args.chunk_size, overlap_size=args.overlap)
     retriever = Retriever(chunks)
     retriever.save(args.index)

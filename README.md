@@ -34,6 +34,7 @@ litrag 的做法很笨但很稳：**先检索到原文，只根据原文回答�
 - **自动审核队列**：GitHub Actions 自动把新增或变化候选同步到审核后台，未变化和重复候选不会打扰审核
 - **中文问英文论文**：内置科研高频词查询扩展，中文问题可检索英文原文
 - **证据工作台**：结构化结论、证据面板、原文页码定位与 Markdown 导出
+- **复试文献证据包**：按目标院校、导师方向和论文自动生成研究问题、方法、实验、局限、汇报提纲与可能追问，不依赖大模型
 - **离线可用**：内置自写的 PDF 文本提取器，装不了第三方库的环境也能解析 PDF
 - **LLM 可选**：不配 API Key 也能完整使用（抽取式回答），配了则更自然，并启用引用编号校验
 
@@ -78,6 +79,9 @@ python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2
 
 完整产品路线、当前完成度、最终效果和日常运营方式见
 [docs/product-roadmap-and-operating-guide.md](docs/product-roadmap-and-operating-guide.md)。
+
+复试文献证据包的使用方式和能力边界见
+[docs/evidence-pack.md](docs/evidence-pack.md)。
 
 ### 处理你自己的 PDF
 

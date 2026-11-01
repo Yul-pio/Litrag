@@ -31,6 +31,7 @@ def _guess_title(text: str, fallback: str) -> str:
        既不利于展示，也没法用标题做检索加权）
     """
     saw_markdown = False
+    boilerplate = {"preprint", "preprint.", "accepted", "published", "draft"}
     for line in text.splitlines():
         line = line.strip()
         if line.startswith("#"):
@@ -40,6 +41,8 @@ def _guess_title(text: str, fallback: str) -> str:
                 return title
             continue
         if not line:
+            continue
+        if line.lower() in boilerplate:
             continue
         if saw_markdown:
             break

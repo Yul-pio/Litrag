@@ -143,6 +143,10 @@ def application(environ, start_response):
                 demo=bool(payload.get("demo")),
             ))
 
+        if method == "POST" and path == "/api/evidence-pack":
+            payload = json.loads(body or b"{}")
+            return _json(start_response, "200 OK", service.create_evidence_pack(sid, payload))
+
         if method == "POST" and path == "/api/upload":
             query = parse_qs(query_string)
             name = (query.get("name") or ["upload.pdf"])[0]

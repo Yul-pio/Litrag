@@ -25,7 +25,7 @@ from litrag.answerer import _extractive, answer
 from litrag.bm25 import content_terms, tokenize
 from litrag.chunker import Chunk, chunk_document
 from litrag.evaluate import run_refusal_eval
-from litrag.loader import Document, load_dir
+from litrag.loader import Document, load_dir, load_file
 from litrag.query import build_query_plan
 from litrag import admin, change_events, service
 from scripts.collectors.pku import collect_pku_catalog
@@ -33,6 +33,7 @@ from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
 from scripts.review_candidates import render_markdown, review_candidates
 from scripts.fetch_papers import load_manifest
+from litrag.evidence_pack import build_evidence_pack
 from litrag.retriever import Hit, Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -126,6 +127,30 @@ class TestExtractiveAnswer(unittest.TestCase):
 
         self.assertIn(complete, result.text)
         self.assertNotIn("我希望通过", result.text)
+
+
+class TestEvidencePack(unittest.TestCase):
+    def test_evidence_pack_contains_outline_questions_and_citations(self):
+        doc = load_file(ROOT / "data" / "docs" / "01-rag-basics.md")
+        chunks = chunk_document(doc, target_size=200, overlap_size=60)
+        pack = build_evidence_pack(
+            chunks,
+            doc_id=doc.doc_id,
+            school="测试大学",
+            major="计算机",
+            advisor="测试导师",
+            direction="检索增强生成",
+            purpose="复试汇报",
+            duration=3,
+        )
+
+        self.assertTrue(pack["summary"])
+        self.assertEqual(len(pack["sections"]), 5)
+        self.assertGreaterEqual(len(pack["questions"]), 8)
+        self.assertTrue(pack["evidence"])
+        self.assertIn("复试文献证据包", pack["markdown"])
+        self.assertIn("原文证据", pack["markdown"])
+        self.assertTrue(any("检索增强生成" in question for question in pack["questions"]))
 
 
 class TestCollectors(unittest.TestCase):
