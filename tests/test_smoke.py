@@ -21,9 +21,9 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from litrag.answerer import answer
+from litrag.answerer import _extractive, answer
 from litrag.bm25 import content_terms, tokenize
-from litrag.chunker import chunk_document
+from litrag.chunker import Chunk, chunk_document
 from litrag.evaluate import run_refusal_eval
 from litrag.loader import Document, load_dir
 from litrag.query import build_query_plan
@@ -33,7 +33,7 @@ from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
 from scripts.review_candidates import render_markdown, review_candidates
 from scripts.fetch_papers import load_manifest
-from litrag.retriever import Retriever
+from litrag.retriever import Hit, Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
 
@@ -99,6 +99,33 @@ class TestChunker(unittest.TestCase):
         chunks = chunk_document(doc, target_size=100, overlap_size=25)
         self.assertGreaterEqual(len(chunks), 2)
         self.assertTrue(chunks[1].text.startswith(chunks[0].text[-25:]))
+
+
+class TestExtractiveAnswer(unittest.TestCase):
+    def test_overlapping_chunks_do_not_repeat_the_same_sentence(self):
+        sentence = "本报告旨在分析计算机专业学生的职业发展方向。"
+        hits = [
+            Hit(Chunk("c1", "report", "生涯发展报告", "第 3 页", sentence, 3), 30.0),
+            Hit(Chunk("c2", "report-2", "生涯发展报告-2", "第 3 页", sentence, 3), 28.0),
+        ]
+
+        result = _extractive("这份报告要分析什么？", hits)
+
+        self.assertEqual(result.text.count(sentence), 1)
+        self.assertEqual(len(result.citations), 1)
+        self.assertIn("根据原文证据", result.text)
+
+    def test_complete_sentence_is_preferred_over_incomplete_intro(self):
+        intro = "计算机科学与技术专业新生，我希望通过这份生涯发展报告，"
+        complete = "本报告旨在分析计算机专业学生的职业发展方向。"
+        hits = [
+            Hit(Chunk("c1", "report", "生涯发展报告", "第 3 页", f"{intro}\n{complete}", 3), 30.0),
+        ]
+
+        result = _extractive("报告分析什么？", hits)
+
+        self.assertIn(complete, result.text)
+        self.assertNotIn("我希望通过", result.text)
 
 
 class TestCollectors(unittest.TestCase):

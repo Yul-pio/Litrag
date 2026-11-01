@@ -17,6 +17,7 @@ import urllib.error
 import urllib.request
 from collections import Counter
 from dataclasses import dataclass
+from difflib import SequenceMatcher
 
 from .bm25 import content_terms, tokenize
 from .retriever import Hit
@@ -157,7 +158,7 @@ def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answe
             sent = sent.strip()
             if sent.startswith("-RAG") and "self-rag" in question.lower():
                 sent = "Self-RAG" + sent[4:]
-            if len(sent) < 24 or len(sent) > 500:
+            if len(sent) < 16 or len(sent) > 500:
                 continue
             if sent.strip().lower() == (hit.chunk.title or "").strip().lower():
                 continue
@@ -170,7 +171,8 @@ def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answe
             if overlap == 0:
                 continue
             complete = 1.0 if sent[-1] in ".。!?！？；;" else 0.0
-            score = overlap / (len(s_terms) ** 0.5) + complete * 0.08
+            length_bonus = 0.08 if 40 <= len(sent) <= 240 else 0.0
+            score = overlap / (len(s_terms) ** 0.5) + complete * 0.3 + length_bonus
             candidates.append((score, idx, pos, sent, hit))
 
     if not candidates:
@@ -185,19 +187,34 @@ def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answe
         )
 
     candidates.sort(key=lambda item: item[0], reverse=True)
+    complete_candidates = [
+        item for item in candidates
+        if item[3][-1] in ".。!?！？；;" and len(item[3]) >= 16
+    ]
+    pool = complete_candidates or candidates
     picked: list[tuple[float, int, int, str, Hit]] = []
     per_chunk = Counter()
-    for candidate in candidates:
+    seen_keys: list[str] = []
+    for candidate in pool:
         idx = candidate[1]
-        if per_chunk[idx] >= 2:
+        if per_chunk[idx] >= 1:
+            continue
+        key = re.sub(r"\W+", "", candidate[3].lower())
+        if not key:
+            continue
+        if any(
+            key == seen or SequenceMatcher(None, key, seen).ratio() >= 0.92
+            for seen in seen_keys
+        ):
             continue
         picked.append(candidate)
+        seen_keys.append(key)
         per_chunk[idx] += 1
         if len(picked) >= max_sentences:
             break
 
     picked.sort(key=lambda item: (item[1], item[2]))
-    body = "\n\n".join(f"{sent}[{idx}]" for _, idx, _, sent, _ in picked)
+    body = "根据原文证据：\n" + "\n".join(f"- {sent}[{idx}]" for _, idx, _, sent, _ in picked)
     citations, used = [], set()
     for _, idx, _, sent, hit in picked:
         if idx in used:
@@ -205,13 +222,7 @@ def _extractive(question: str, hits: list[Hit], max_sentences: int = 3) -> Answe
         used.add(idx)
         citations.append(_to_citation(idx, hit, sent))
 
-    complete = [
-        item for item in picked
-        if len(item[3]) >= 36
-        and item[3][-1] in ".。!?！？；;"
-        and (item[3][0].isupper() or "\u4e00" <= item[3][0] <= "\u9fff")
-    ]
-    headline_source = max(complete, key=lambda item: item[0])[3] if complete else picked[0][3]
+    headline_source = max(picked, key=lambda item: item[0])[3]
     return Answer(
         text=body,
         citations=citations,
@@ -231,11 +242,17 @@ def _llm(question: str, hits: list[Hit]) -> Answer:
 
     context = "\n\n".join(f"[{i}] {h.chunk.text}" for i, h in enumerate(hits, start=1))
     system = (
-        "你是学术文献阅读助手。规则：\n"
+        "你是面向本科生科研与复试的文献阅读助手。规则：\n"
         "1. 只能依据给定资料回答，资料里没有的信息直接说“资料中未提及”。\n"
-        "2. 每个结论后面必须用 [序号] 标注来源，序号对应资料编号。\n"
-        "3. 不要编造序号，不要输出资料之外的知识。\n"
-        "4. 用简洁的中文作答。"
+        "2. 每个结论后面必须用 [序号] 标注来源，序号对应资料编号；不要编造序号。\n"
+        "3. 不要输出资料之外的知识，不要用常识补全论文没有写的内容。\n"
+        "4. 用中文作答，先给一句结论，再用 2-3 个证据要点解释。\n"
+        "5. 如果问题适合复试场景，最后补一句“本科生怎么用”，说明如何用于汇报或追问。\n"
+        "6. 如果证据之间冲突或不足，要明确说明边界，不要强行下结论。\n"
+        "建议格式：\n"
+        "结论：...\n"
+        "证据：\n- ... [1]\n- ... [2]\n"
+        "本科生怎么用：..."
     )
 
     payload = {
@@ -245,6 +262,7 @@ def _llm(question: str, hits: list[Hit]) -> Answer:
             {"role": "user", "content": f"资料：\n{context}\n\n问题：{question}"},
         ],
         "temperature": 0.2,
+        "max_tokens": int(os.getenv("LITRAG_MAX_TOKENS", "700")),
     }
     request = urllib.request.Request(
         f"{base}/chat/completions",
@@ -337,6 +355,7 @@ def answer(
             result.warning = f"LLM 调用失败，已降级为抽取式回答（{exc}）"
     else:
         result = _extractive(lookup_query, hits)
+        result.warning = "当前未配置生成模型，展示的是原文摘录证据，不是自然语言归纳。"
 
     if caveat:
         result.warning = f"{result.warning}；{caveat}" if result.warning else caveat
