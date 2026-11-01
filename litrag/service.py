@@ -489,6 +489,7 @@ def _demo_documents() -> list[dict]:
     items = list(docs.values())
     for item in items:
         paper = metadata.get(item.get("doc_id"))
+        item["is_demo_paper"] = bool(paper)
         if paper:
             item["title"] = paper.get("title") or item.get("title")
             item["category"] = paper.get("category", "")
