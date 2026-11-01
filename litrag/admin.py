@@ -12,6 +12,8 @@ import json
 import os
 import re
 import threading
+import urllib.error
+import urllib.request
 import uuid
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -85,7 +87,9 @@ def _ingest_token() -> str:
 
 
 def _ingest_configured() -> bool:
-    return len(_ingest_token()) >= 12
+    # GitHub Actions requests are verified against the run API, so a shared
+    # ingestion secret is optional.
+    return True
 
 
 def _require_token(headers: dict[str, str]) -> None:
@@ -104,6 +108,39 @@ def _require_ingest_token(headers: dict[str, str]) -> None:
     supplied = _header(headers, "X-Ingest-Token")
     if not supplied or not hmac.compare_digest(supplied, token):
         raise AdminError(401, "采集令牌无效")
+
+
+def _verify_github_actions_request(headers: dict[str, str]) -> bool:
+    token = _header(headers, "X-GitHub-Token")
+    repo = _header(headers, "X-GitHub-Repository")
+    run_id = _header(headers, "X-GitHub-Run-Id")
+    if not token or not repo or not run_id or not re.fullmatch(r"\d+", run_id):
+        return False
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/actions/runs/{run_id}",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "litrag-admin-ingest/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except (OSError, ValueError, urllib.error.URLError):
+        return False
+    repository = (payload.get("repository") or {}).get("full_name", "")
+    return payload.get("id") == int(run_id) and repository.lower() == repo.lower()
+
+
+def _require_ingest_auth(headers: dict[str, str]) -> None:
+    token = _ingest_token()
+    supplied = _header(headers, "X-Ingest-Token")
+    if len(token) >= 12 and supplied and hmac.compare_digest(supplied, token):
+        return
+    if _verify_github_actions_request(headers):
+        return
+    raise AdminError(401, "采集请求认证失败：GitHub Actions 身份或采集令牌无效")
 
 
 def _response_json(status: int, payload: dict) -> tuple[int, bytes, str, dict[str, str]]:
@@ -623,7 +660,7 @@ def dispatch(
             })
 
         if method == "POST" and path == "/api/admin/ingest":
-            _require_ingest_token(headers)
+            _require_ingest_auth(headers)
             with _lock:
                 result = _ingest_candidates(
                     _query_value(query, "name", "candidates.json"),

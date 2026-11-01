@@ -73,6 +73,10 @@ def application(environ, start_response):
         parse_qs(query_string),
         {
             "x-admin-token": environ.get("HTTP_X_ADMIN_TOKEN", ""),
+            "x-ingest-token": environ.get("HTTP_X_INGEST_TOKEN", ""),
+            "x-github-token": environ.get("HTTP_X_GITHUB_TOKEN", ""),
+            "x-github-repository": environ.get("HTTP_X_GITHUB_REPOSITORY", ""),
+            "x-github-run-id": environ.get("HTTP_X_GITHUB_RUN_ID", ""),
             "content-type": environ.get("CONTENT_TYPE", ""),
         },
         body,

@@ -540,6 +540,28 @@ class TestAdminReview(unittest.TestCase):
         self.assertEqual(result["skipped_dismissed"], 1)
         self.assertEqual(result["skipped_duplicate"], 1)
 
+    def test_github_actions_identity_can_ingest_without_shared_secret(self):
+        pku_html = (ROOT / "tests" / "fixtures" / "pku_2027_catalog.html").read_text(encoding="utf-8")
+        payload = collect_pku_catalog(year=2027, html=pku_html, college_filter="软件与微电子学院")
+        headers = {
+            "x-github-token": "github-actions-short-lived-token",
+            "x-github-repository": "Yul-pio/litrag",
+            "x-github-run-id": "123456789",
+        }
+        with patch.object(admin, "_verify_github_actions_request", return_value=True), patch.dict(
+            os.environ, {"LITRAG_INGEST_TOKEN": ""}
+        ):
+            status, body, _, _ = admin.dispatch(
+                "POST",
+                "/api/admin/ingest",
+                {"name": ["pku_2027_catalog.json"]},
+                headers,
+                json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                "test",
+            )
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["skipped_unchanged"], 1)
+
 
 class TestRadar(unittest.TestCase):
     def test_radar_items_are_available(self):

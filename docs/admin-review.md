@@ -39,18 +39,19 @@ PythonAnywhere 等 WSGI 环境需要在 Web App 的环境变量中设置：
 
 ```text
 LITRAG_ADMIN_TOKEN=至少12位的随机字符串
-LITRAG_INGEST_TOKEN=另一条至少12位的随机字符串
 ```
 
 修改后重启 Web App。不要把这个值写进 Git 仓库，也不要通过 URL 参数传递。
+自动同步使用 GitHub Actions 的短期身份令牌，不需要额外配置共享 Secret。
 
 ## 审核流程
 
-1. 从 GitHub Actions 下载候选 artifact。
-2. 在审核台上传其中的 `*_catalog.json`。
-3. 查看候选与正式库的字段差异。
-4. 核对专业、方向、招生计划、推免数、考试科目和官方来源。
-5. 点击“核验通过并发布”，或填写原因后拒绝。
+1. 打开 `/admin` 查看自动同步的候选。
+2. 查看候选与正式库的字段差异。
+3. 核对专业、方向、招生计划、推免数、考试科目和官方来源。
+4. 点击“核验通过并发布”，或填写原因后拒绝。
+
+需要人工补录时，仍可上传 artifact 中的 `*_catalog.json` 作为兜底。
 
 系统会自动处理：
 
@@ -76,7 +77,7 @@ data/candidates/review_audit.jsonl  审核审计日志
 ## 安全边界
 
 - 所有管理 API 都要求 `X-Admin-Token` 请求头；
-- 自动入库接口只接受 `X-Ingest-Token`，与管理员令牌分离；
+- 自动入库接口接受经 GitHub API 验证的 Actions 短期令牌；可选的 `X-Ingest-Token` 仅用于兼容人工调用；
 - 未配置至少 12 位令牌时，管理 API 返回 503；
 - 管理页面禁止被 iframe 嵌入，并设置 `no-store`；
 - CSP 限制脚本和连接只访问本站；
@@ -90,12 +91,8 @@ data/candidates/review_audit.jsonl  审核审计日志
 POST /api/admin/ingest
 ```
 
-在 GitHub 仓库的 Settings → Secrets and variables → Actions 中配置：
-
-```text
-LITRAG_SITE_URL=https://yulpio.pythonanywhere.com
-LITRAG_INGEST_TOKEN=与服务端相同的采集令牌
-```
+Workflow 会使用 GitHub 自动提供的 `${{ github.token }}`、仓库名和运行 ID 请求后台。
+后台再向 GitHub API 验证该运行确实属于 `Yul-pio/litrag`，因此不需要保存共享同步令牌。
 
 自动入库会执行以下过滤：
 
