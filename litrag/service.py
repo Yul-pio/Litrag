@@ -24,8 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .answerer import answer
-from .chunker import Chunk, chunk_document
-from .loader import load_file
+from .chunker import Chunk, chunk_document, chunk_documents
+from .loader import load_dir, load_file
 from .query import build_query_plan
 from .retriever import Retriever
 
@@ -127,7 +127,17 @@ def _global() -> Retriever:
     global _global_retriever
     with _lock:
         if _global_retriever is None:
-            _global_retriever = Retriever.load(GLOBAL_INDEX)
+            if GLOBAL_INDEX.exists():
+                _global_retriever = Retriever.load(GLOBAL_INDEX)
+            else:
+                docs = load_dir(ROOT / "data" / "docs")
+                chunks = chunk_documents(docs, target_size=200, overlap_size=60)
+                _global_retriever = Retriever(chunks)
+                try:
+                    _global_retriever.save(GLOBAL_INDEX)
+                except OSError:
+                    # 部署目录只读时仍允许当前进程使用内存索引。
+                    pass
         return _global_retriever
 
 

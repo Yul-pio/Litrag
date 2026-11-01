@@ -730,5 +730,20 @@ class TestSessionFiles(unittest.TestCase):
             shutil.rmtree(base, ignore_errors=True)
 
 
+class TestWorkbenchBootstrap(unittest.TestCase):
+    def test_missing_global_index_is_rebuilt_from_demo_docs(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            index_path = Path(temp_dir) / "index.json"
+            with patch.object(service, "GLOBAL_INDEX", index_path), patch.object(
+                service, "_global_retriever", None
+            ):
+                retriever = service._global()
+                library = service.list_documents(None)
+
+            self.assertGreater(len(retriever.chunks), 0)
+            self.assertTrue(index_path.exists())
+            self.assertGreater(len(library["demo_docs"]), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
