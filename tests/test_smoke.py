@@ -32,6 +32,7 @@ from scripts.collectors.pku import collect_pku_catalog
 from scripts.collectors.tsinghua import collect_tsinghua_catalog
 from scripts.promote_candidate import apply_review, build_records, draft_review, validate_review
 from scripts.review_candidates import render_markdown, review_candidates
+from scripts.fetch_papers import load_manifest
 from litrag.retriever import Retriever
 
 DOCS_DIR = ROOT / "data" / "docs"
@@ -731,6 +732,12 @@ class TestSessionFiles(unittest.TestCase):
 
 
 class TestWorkbenchBootstrap(unittest.TestCase):
+    def test_demo_paper_manifest_has_curated_library(self):
+        papers = load_manifest()
+        self.assertGreaterEqual(len(papers), 13)
+        self.assertEqual(len({item["id"] for item in papers}), len(papers))
+        self.assertTrue(all(item.get("title") and item.get("category") for item in papers))
+
     def test_missing_global_index_is_rebuilt_from_demo_docs(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             index_path = Path(temp_dir) / "index.json"

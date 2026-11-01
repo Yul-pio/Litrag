@@ -82,12 +82,12 @@ python scripts/promote_candidate.py draft --candidate-file data/candidates/pku_2
 ### 处理你自己的 PDF
 
 ```bash
-# 下载论文（需要联网）
-python scripts/fetch_papers.py
+# 下载精选演示论文并建立工作台索引（需要联网）
+python scripts/bootstrap_workbench.py
 
 # 或者手动放进 data/papers/ ，文件名保持 arXiv 编号，如 2312.10997.pdf
 python run.py check data/papers/2312.10997.pdf   # 先体检：能不能读出文字
-python run.py ingest data                         # 递归读取 docs/ 和 papers/
+python run.py ingest data                         # 手动重建自定义语料索引
 python run.py ask "What are the three main stages of RAG?"
 ```
 

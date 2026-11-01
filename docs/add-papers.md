@@ -10,7 +10,14 @@
 获取方式：
 
 ```bash
-python scripts/fetch_papers.py
+# 按 data/demo_papers.json 下载 13 篇精选论文并重建索引
+python scripts/bootstrap_workbench.py
+```
+
+只查看清单：
+
+```bash
+python scripts/fetch_papers.py --list
 ```
 
 或者手动打开 `https://arxiv.org/abs/<编号>` → 点「查看PDF」→ 保存时把
@@ -20,6 +27,12 @@ python scripts/fetch_papers.py
 
 ```bash
 python run.py check data/papers/2312.10997.pdf
+```
+
+如果 PDF 已经存在，只重建索引：
+
+```bash
+python scripts/bootstrap_workbench.py --skip-download
 ```
 
 **PDF 不提交到 git**（见 `.gitignore`）：体积大，而且版权归作者，不适合再分发。

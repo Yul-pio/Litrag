@@ -1,0 +1,93 @@
+[
+  {
+    "id": "2312.10997",
+    "title": "Retrieval-Augmented Generation for Large Language Models: A Survey",
+    "category": "RAG 入门",
+    "level": "入门",
+    "order": 1
+  },
+  {
+    "id": "2307.03172",
+    "title": "Lost in the Middle: How Language Models Use Long Contexts",
+    "category": "上下文与检索",
+    "level": "入门",
+    "order": 2
+  },
+  {
+    "id": "2310.11511",
+    "title": "Self-RAG: Learning to Retrieve, Generate, and Critique through Self-Reflection",
+    "category": "RAG 方法",
+    "level": "进阶",
+    "order": 3
+  },
+  {
+    "id": "2004.04906",
+    "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+    "category": "检索基础",
+    "level": "进阶",
+    "order": 4
+  },
+  {
+    "id": "2002.08909",
+    "title": "REALM: Retrieval-Augmented Language Model Pre-Training",
+    "category": "检索增强预训练",
+    "level": "进阶",
+    "order": 5
+  },
+  {
+    "id": "2005.11401",
+    "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "category": "RAG 经典",
+    "level": "进阶",
+    "order": 6
+  },
+  {
+    "id": "1706.03762",
+    "title": "Attention Is All You Need",
+    "category": "大模型基础",
+    "level": "经典",
+    "order": 7
+  },
+  {
+    "id": "1810.04805",
+    "title": "BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding",
+    "category": "大模型基础",
+    "level": "经典",
+    "order": 8
+  },
+  {
+    "id": "2201.11903",
+    "title": "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models",
+    "category": "推理方法",
+    "level": "入门",
+    "order": 9
+  },
+  {
+    "id": "2210.03629",
+    "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "category": "智能体基础",
+    "level": "进阶",
+    "order": 10
+  },
+  {
+    "id": "2302.04761",
+    "title": "Toolformer: Language Models Can Teach Themselves to Use Tools",
+    "category": "工具调用",
+    "level": "进阶",
+    "order": 11
+  },
+  {
+    "id": "2205.14135",
+    "title": "FlashAttention: Fast and Memory-Efficient Exact Attention with IO-Awareness",
+    "category": "模型效率",
+    "level": "进阶",
+    "order": 12
+  },
+  {
+    "id": "2305.18290",
+    "title": "Direct Preference Optimization: Your Language Model is Secretly a Reward Model",
+    "category": "对齐方法",
+    "level": "进阶",
+    "order": 13
+  }
+]

@@ -37,6 +37,7 @@ SOURCES_PATH = ROOT / "data" / "sources.json"
 PROGRAMS_PATH = ROOT / "data" / "programs.json"
 ADMISSIONS_PATH = ROOT / "data" / "admission_records.json"
 CHANGE_EVENTS_PATH = ROOT / "data" / "change_events.json"
+DEMO_PAPERS_PATH = ROOT / "data" / "demo_papers.json"
 UPLOAD_ROOT = ROOT / "uploads"
 
 SESSION_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
@@ -484,7 +485,33 @@ def _demo_documents() -> list[dict]:
         )
         item["chunks"] += 1
         item["pages"] = max(item["pages"], chunk.page or 0)
-    return list(docs.values())
+    metadata = _demo_paper_metadata()
+    items = list(docs.values())
+    for item in items:
+        paper = metadata.get(item.get("doc_id"))
+        if paper:
+            item["title"] = paper.get("title") or item.get("title")
+            item["category"] = paper.get("category", "")
+            item["level"] = paper.get("level", "")
+            item["order"] = paper.get("order", 9999)
+    items.sort(key=lambda item: (item.get("order", 9999), item.get("title", "")))
+    return items
+
+
+def _demo_paper_metadata() -> dict[str, dict]:
+    if not DEMO_PAPERS_PATH.exists():
+        return {}
+    try:
+        items = json.loads(DEMO_PAPERS_PATH.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return {}
+    if not isinstance(items, list):
+        return {}
+    return {
+        str(item.get("id")): item
+        for item in items
+        if isinstance(item, dict) and item.get("id")
+    }
 
 
 # ---------------------------------------------------------------- 提问

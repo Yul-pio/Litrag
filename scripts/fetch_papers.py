@@ -1,7 +1,7 @@
 """批量下载 arXiv 论文 PDF 到 data/papers/。
 
 用法：
-    python scripts/fetch_papers.py                 # 下载默认清单（5 篇 RAG 经典）
+    python scripts/fetch_papers.py                 # 下载 data/demo_papers.json 中的精选论文
     python scripts/fetch_papers.py --ids 2312.10997 2307.03172
     python scripts/fetch_papers.py --list          # 只看清单，不下载
 
@@ -15,21 +15,33 @@
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "data" / "papers"
+MANIFEST_PATH = ROOT / "data" / "demo_papers.json"
 
-# 五篇 RAG 方向的入门论文（按阅读顺序）
-DEFAULT_PAPERS = {
-    "2312.10997": "Retrieval-Augmented Generation for LLMs: A Survey",
-    "2307.03172": "Lost in the Middle: How Language Models Use Long Contexts",
-    "2310.11511": "Self-RAG: Learning to Retrieve, Generate, and Critique",
-    "2004.04906": "Dense Passage Retrieval for Open-Domain QA",
-    "2002.08909": "REALM: Retrieval-Augmented Language Model Pre-Training",
-}
+
+def load_manifest() -> list[dict]:
+    if not MANIFEST_PATH.exists():
+        raise FileNotFoundError(f"缺少演示论文清单：{MANIFEST_PATH}")
+    items = json.loads(MANIFEST_PATH.read_text(encoding="utf-8-sig"))
+    if not isinstance(items, list):
+        raise ValueError("demo_papers.json 必须是列表")
+    papers: list[dict] = []
+    seen: set[str] = set()
+    for item in items:
+        arxiv_id = str(item.get("id") or "").strip()
+        title = str(item.get("title") or "").strip()
+        if not arxiv_id or not title or arxiv_id in seen:
+            continue
+        seen.add(arxiv_id)
+        papers.append({**item, "id": arxiv_id, "title": title})
+    papers.sort(key=lambda item: int(item.get("order") or 9999))
+    return papers
 
 
 def download(arxiv_id: str, title: str) -> bool:
@@ -66,20 +78,27 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.list:
-        for arxiv_id, title in DEFAULT_PAPERS.items():
-            print(f"{arxiv_id}  {title}")
+        for item in load_manifest():
+            print(
+                f"{item['id']:12s} {item.get('category', ''):12s} "
+                f"{item.get('level', ''):6s} {item['title']}"
+            )
         return
 
+    manifest = {item["id"]: item for item in load_manifest()}
     if args.ids:
-        targets = {i: DEFAULT_PAPERS.get(i, "") for i in args.ids}
+        targets = {
+            arxiv_id: manifest.get(arxiv_id, {"id": arxiv_id, "title": ""})
+            for arxiv_id in args.ids
+        }
     else:
-        targets = DEFAULT_PAPERS
+        targets = manifest
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     ok = 0
-    for arxiv_id, title in targets.items():
-        if download(arxiv_id, title):
+    for arxiv_id, item in targets.items():
+        if download(arxiv_id, item.get("title", "")):
             ok += 1
 
     print(f"\n完成 {ok}/{len(targets)}")
