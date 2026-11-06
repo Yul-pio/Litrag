@@ -89,6 +89,9 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/admissions":
             self._json(200, service.list_admission_records())
             return
+        if path == "/api/evidence-pack":
+            self._json(200, {"pack": service.load_evidence_pack(self.session)})
+            return
         if path == "/api/file":
             try:
                 doc_id = (parse_qs(parsed.query).get("doc") or [""])[0]
@@ -156,6 +159,11 @@ class Handler(BaseHTTPRequestHandler):
             if parsed.path == "/api/evidence-pack":
                 payload = json.loads(body or b"{}")
                 self._json(200, service.create_evidence_pack(self.session, payload))
+                return
+
+            if parsed.path == "/api/evidence-pack/save":
+                payload = json.loads(body or b"{}")
+                self._json(200, service.save_evidence_pack(self.session, payload))
                 return
 
             if parsed.path == "/api/upload":

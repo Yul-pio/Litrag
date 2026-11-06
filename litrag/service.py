@@ -25,7 +25,7 @@ from pathlib import Path
 
 from .answerer import answer
 from .chunker import Chunk, chunk_document, chunk_documents
-from .evidence_pack import build_evidence_pack
+from .evidence_pack import build_evidence_pack, build_markdown
 from .loader import load_dir, load_file
 from .query import build_query_plan
 from .retriever import Retriever
@@ -357,7 +357,43 @@ def create_evidence_pack(sid: str | None, payload: dict) -> dict:
         title=demo_title,
     )
     pack["library_source"] = source
+    return save_evidence_pack(sid, pack)
+
+
+def _evidence_pack_path(sid: str) -> Path:
+    return _session_dir(sid) / "evidence_pack.json"
+
+
+def save_evidence_pack(sid: str | None, payload: dict) -> dict:
+    """保存当前会话编辑后的证据包，并重新生成 Markdown。"""
+    if not valid_session(sid):
+        raise ValueError("会话标识无效，请刷新页面重试")
+    if not isinstance(payload, dict) or not payload.get("title"):
+        raise ValueError("证据包数据不完整")
+    pack = json.loads(json.dumps(payload, ensure_ascii=False))
+    pack["summary"] = str(pack.get("summary") or "")[:5000]
+    pack["reviewed"] = bool(pack.get("reviewed"))
+    pack["saved_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    pack["markdown"] = build_markdown(pack)
+    target = _evidence_pack_path(sid)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temp = target.with_name(target.name + ".tmp")
+    temp.write_text(json.dumps(pack, ensure_ascii=False, indent=2), encoding="utf-8")
+    temp.replace(target)
     return pack
+
+
+def load_evidence_pack(sid: str | None) -> dict | None:
+    if not valid_session(sid):
+        return None
+    target = _evidence_pack_path(sid)
+    if not target.exists():
+        return None
+    try:
+        payload = json.loads(target.read_text(encoding="utf-8-sig"))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _load_list(path: Path, label: str) -> list[dict]:

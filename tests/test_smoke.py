@@ -152,6 +152,29 @@ class TestEvidencePack(unittest.TestCase):
         self.assertIn("原文证据", pack["markdown"])
         self.assertTrue(any("检索增强生成" in question for question in pack["questions"]))
 
+    def test_evidence_pack_can_be_saved_edited_and_restored(self):
+        base = ROOT / "tmp" / "test-evidence-pack-root"
+        if base.exists():
+            shutil.rmtree(base, ignore_errors=True)
+        base.mkdir(parents=True, exist_ok=True)
+        try:
+            with patch.object(service, "UPLOAD_ROOT", base):
+                sid = "evidence-pack-test"
+                doc = load_file(ROOT / "data" / "docs" / "01-rag-basics.md")
+                chunks = chunk_document(doc, target_size=200, overlap_size=60)
+                pack = build_evidence_pack(chunks, doc_id=doc.doc_id)
+                pack["summary"] = "人工修改后的总结。"
+                pack["reviewed"] = True
+                saved = service.save_evidence_pack(sid, pack)
+                restored = service.load_evidence_pack(sid)
+
+            self.assertEqual(saved["summary"], "人工修改后的总结。")
+            self.assertTrue(saved["reviewed"])
+            self.assertEqual(restored["summary"], "人工修改后的总结。")
+            self.assertIn("人工核对：已完成", restored["markdown"])
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
 
 class TestCollectors(unittest.TestCase):
     def test_pku_catalog_link_is_candidate(self):

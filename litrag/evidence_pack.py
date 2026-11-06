@@ -212,6 +212,7 @@ def build_markdown(pack: dict) -> str:
         f"- 导师或方向：{pack.get('advisor') or pack.get('direction') or '未填写'}",
         f"- 用途：{pack.get('purpose')}",
         f"- 时长：{pack.get('duration')} 分钟",
+        f"- 人工核对：{'已完成' if pack.get('reviewed') else '待核对'}",
         "",
         "## 一句话总结",
         "",
@@ -352,6 +353,7 @@ def build_evidence_pack(
         "questions": questions,
         "evidence": evidence,
         "warnings": warnings,
+        "reviewed": False,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "mode": "structured_extractive",
     }

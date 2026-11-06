@@ -111,6 +111,9 @@ def application(environ, start_response):
         if method == "GET" and path == "/api/admissions":
             return _json(start_response, "200 OK", service.list_admission_records())
 
+        if method == "GET" and path == "/api/evidence-pack":
+            return _json(start_response, "200 OK", {"pack": service.load_evidence_pack(sid)})
+
         if method == "GET" and path == "/api/file":
             query = parse_qs(environ.get("QUERY_STRING", ""))
             doc_id = (query.get("doc") or [""])[0]
@@ -146,6 +149,10 @@ def application(environ, start_response):
         if method == "POST" and path == "/api/evidence-pack":
             payload = json.loads(body or b"{}")
             return _json(start_response, "200 OK", service.create_evidence_pack(sid, payload))
+
+        if method == "POST" and path == "/api/evidence-pack/save":
+            payload = json.loads(body or b"{}")
+            return _json(start_response, "200 OK", service.save_evidence_pack(sid, payload))
 
         if method == "POST" and path == "/api/upload":
             query = parse_qs(query_string)
