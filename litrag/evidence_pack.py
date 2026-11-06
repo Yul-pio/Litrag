@@ -91,6 +91,12 @@ def _useful_citation(text: str) -> bool:
     )
     if lowered.startswith(bad_prefixes):
         return False
+    if re.match(r"^[A-Z]\s+(with|to|from|and|for|by|in)\b", text):
+        return False
+    if any(text.count(left) != text.count(right) for left, right in (("(", ")"), ("[", "]"), ("{", "}"))):
+        return False
+    if text[-1] not in ".。!?！？；;":
+        return False
     visible = [char for char in text if not char.isspace()]
     if visible and sum(char.isdigit() for char in visible) / len(visible) > 0.16:
         return False
@@ -122,11 +128,15 @@ def _section_candidates(chunks: list[Chunk], keywords: tuple[str, ...], bias: st
         for raw in _SENTENCE_SPLIT.split(chunk.text):
             sentence = re.sub(r"\s+", " ", raw or "").strip()
             sentence = re.sub(r"^-(?=[A-Z])", "", sentence)
+            sentence = re.sub(r"\bSELF\s*-\s*RAG\b", "Self-RAG", sentence)
+            sentence = re.sub(r"\s+([,.;:!?])", r"\1", sentence)
             if "Self-RAG" in (chunk.title or "") and sentence.startswith("RAG "):
                 sentence = "Self-" + sentence
             if not _useful_citation(sentence):
                 continue
             if re.match(r"^\d+[A-Z]", sentence) or re.match(r"^(and|or|but|because)\b", sentence, re.I):
+                continue
+            if re.match(r"^[A-Z]\s+(with|to|from|and|for|by|in)\b", sentence):
                 continue
             if not (sentence[0].isupper() or "\u4e00" <= sentence[0] <= "\u9fff"):
                 continue
@@ -140,7 +150,7 @@ def _section_candidates(chunks: list[Chunk], keywords: tuple[str, ...], bias: st
             seen.add(key)
             complete = sentence[-1] in ".。!?！？；;"
             score = hits * 1.6 + _page_bonus(chunk.page, max_page, bias)
-            score += 0.25 if complete else -0.4
+            score += 0.25
             score += 0.12 if 45 <= len(sentence) <= 260 else 0.0
             scored.append((score, {
                 "quote": sentence[:360],
@@ -152,8 +162,7 @@ def _section_candidates(chunks: list[Chunk], keywords: tuple[str, ...], bias: st
                 "complete": complete,
             }))
     scored.sort(key=lambda item: item[0], reverse=True)
-    complete = [item for item in scored if item[1]["complete"]]
-    pool = complete or scored
+    pool = scored
     picked: list[dict] = []
     used_chunks: set[str] = set()
     for _, item in pool:
